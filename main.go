@@ -12,11 +12,13 @@ import (
 // These are parsed from CLI flags in the run command and passed
 // to the init process via environment variables.
 type ContainerConfig struct {
-	RootfsPath string   // Path to container's root filesystem
-	Hostname   string   // Custom hostname for the container
-	Name       string   // Container name (for identification in ps, stop, etc.)
-	Env        []string // User-specified environment variables (KEY=VALUE format)
-	AutoRemove bool     // If true, remove container filesystem on exit
+	RootfsPath  string   // Path to container's root filesystem
+	Hostname    string   // Custom hostname for the container
+	Name        string   // Container name (for identification in ps, stop, etc.)
+	Env         []string // User-specified environment variables (KEY=VALUE format)
+	AutoRemove  bool     // If true, remove container filesystem on exit
+	Interactive bool     // -i: Keep stdin open for interactive input
+	AllocateTTY bool     // -t: Allocate pseudo-terminal for the container
 }
 
 // parseRunFlags parses command-line flags for the run command.
