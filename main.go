@@ -7,6 +7,17 @@ import (
 	"syscall"
 )
 
+// ContainerConfig holds the configuration options for a container.
+// These are parsed from CLI flags in the run command and passed
+// to the init process via environment variables.
+type ContainerConfig struct {
+	RootfsPath string   // Path to container's root filesystem
+	Hostname   string   // Custom hostname for the container
+	Name       string   // Container name (for identification in ps, stop, etc.)
+	Env        []string // User-specified environment variables (KEY=VALUE format)
+	AutoRemove bool     // If true, remove container filesystem on exit
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
