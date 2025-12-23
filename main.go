@@ -129,9 +129,8 @@ func openPTY() (*os.File, *os.File, error) {
 // ptsname returns the name of the slave pseudo-terminal device
 // corresponding to the given master.
 func ptsname(master *os.File) (string, error) {
-	var n uint32
-	// TIOCGPTN ioctl gets the slave pty number
-	if err := unix.IoctlSetPointerInt(int(master.Fd()), unix.TIOCGPTN, uintptr(unsafe.Pointer(&n))); err != nil {
+	n, err := unix.IoctlGetInt(int(master.Fd()), unix.TIOCGPTN)
+	if err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("/dev/pts/%d", n), nil
@@ -140,9 +139,7 @@ func ptsname(master *os.File) (string, error) {
 // unlockpt unlocks the slave pseudo-terminal device.
 // Must be called before the slave can be opened.
 func unlockpt(master *os.File) error {
-	var unlock int
-	// TIOCSPTLCK ioctl unlocks the slave pty (0 = unlock)
-	return unix.IoctlSetPointerInt(int(master.Fd()), unix.TIOCSPTLCK, uintptr(unsafe.Pointer(&unlock)))
+	return unix.IoctlSetInt(int(master.Fd()), unix.TIOCSPTLCK, 0)
 }
 
 // setRawMode puts the terminal into raw mode and returns a function to restore the original settings.
@@ -197,6 +194,14 @@ func main() {
 
 		// Parse CLI flags and extract the command to run
 		cfg, cmdArgs := parseRunFlags(os.Args[2:])
+
+		if cfg.Interactive && cfg.AllocateTTY {
+			// Interactive TTY mode: create PTY and relay I/O
+			// TODO runWithTTY(cfg, cmdArgs)
+		} else {
+			// Non-interactive mode: direct stdin/stdout passthrough
+			// TODO runWithoutTTY(cfg, cmdArgs)
+		}
 
 		// Re-exec ourselves as "init" inside new namespaces
 		// The init process will set up the container environment and exec the user command
