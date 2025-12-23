@@ -6,6 +6,9 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 // ContainerConfig holds the configuration options for a container.
@@ -88,6 +91,30 @@ func parseRunFlags(args []string) (ContainerConfig, []string) {
 		}
 	}
 	return cfg, []string{}
+}
+
+// openPTY creates a new pseudo-terminal pair.
+// Returns the master and slave file descriptors.
+// The master is used by the parent (terminal side).
+// The slave is used by the child (container side).
+func openPTY() (*os.File, *os.File, error) {
+	// Open the PTY master (multiplexor)
+	master, err := os.OpenFile("/dev/ptmx", os.O_RDWR, 0)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to open /dev/ptmx: %w", err)
+	}
+
+	// Get the slave PTY name and unlock it
+}
+
+// ptsname returns the name of the slave pseudo-terminal device
+// corresponding to the given master.
+func ptsname(master *os.File) (string, error) {
+	var n uint32
+	if err := unix.IoctlSetPointerInt(int(master.Fd()), unix.TIOCGPTN, uintptr(unsafe.Pointer(&n))); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("/dev/pts/%d", n), nil
 }
 
 func main() {
