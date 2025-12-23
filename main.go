@@ -111,10 +111,19 @@ func openPTY() (*os.File, *os.File, error) {
 // corresponding to the given master.
 func ptsname(master *os.File) (string, error) {
 	var n uint32
+	// TIOCGPTN ioctl gets the slave pty number
 	if err := unix.IoctlSetPointerInt(int(master.Fd()), unix.TIOCGPTN, uintptr(unsafe.Pointer(&n))); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("/dev/pts/%d", n), nil
+}
+
+// unlockpt unlocks the slave pseudo-terminal device.
+// Must be called before the slave can be opened.
+func unlockpt(master *os.File) error {
+	var unlock int
+	// TIOCSPTLCK ioctl unlocks the slave pty (0 = unlock)
+	return unix.IoctlSetPointerInt(int(master.Fd()), unix.TIOCSPTLCK, uintptr(unsafe.Pointer(&unlock)))
 }
 
 func main() {
