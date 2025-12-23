@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 )
 
 func main() {
@@ -23,8 +24,15 @@ func main() {
 		containerCommand := os.Args[2]
 		containerArgs := os.Args[3:]
 
-		fmt.Printf("Command: %s\n", containerCommand)
-		fmt.Printf("Args: %v\n", containerArgs)
+		cmd := exec.Command(containerCommand, containerArgs...)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
 
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
