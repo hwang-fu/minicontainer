@@ -6,10 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+
+	"github.com/hwang-fu/minicontainer/cmd"
+	"github.com/hwang-fu/minicontainer/runtime"
 )
 
 // BuildEnv creates environment variables to pass to init process.
-func BuildEnv(cfg ContainerConfig) []string {
+func BuildEnv(cfg cmd.ContainerConfig) []string {
 	env := os.Environ()
 	if cfg.RootfsPath != "" {
 		env = append(env, "MINICONTAINER_ROOTFS="+cfg.RootfsPath)
@@ -25,8 +28,8 @@ func BuildEnv(cfg ContainerConfig) []string {
 
 // RunWithTTY runs the container with pseudo-terminal for interactive mode.
 // Creates PTY, sets raw mode, and relays I/O between terminal and container.
-func RunWithTTY(cfg ContainerConfig, cmdArgs []string) {
-	master, slave, err := OpenPTY()
+func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
+	master, slave, err := runtime.OpenPTY()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to create pty: %v\n", err)
 		os.Exit(1)
@@ -35,7 +38,7 @@ func RunWithTTY(cfg ContainerConfig, cmdArgs []string) {
 	defer slave.Close()
 
 	// SetRawMode returns (restoreFunc, error) - restoreFunc resets terminal on exit
-	restoreFunc, err := SetRawMode(int(os.Stdin.Fd()))
+	restoreFunc, err := runtime.SetRawMode(int(os.Stdin.Fd()))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to set raw mode: %v\n", err)
 		os.Exit(1)
@@ -70,7 +73,7 @@ func RunWithTTY(cfg ContainerConfig, cmdArgs []string) {
 }
 
 // RunWithoutTTY runs container with direct stdin/stdout passthrough.
-func RunWithoutTTY(cfg ContainerConfig, cmdArgs []string) {
+func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 	cmd := exec.Command("/proc/self/exe", append([]string{"init"}, cmdArgs...)...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
