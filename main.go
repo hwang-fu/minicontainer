@@ -120,6 +120,12 @@ func main() {
 				os.Exit(1)
 			}
 
+			// 9. Mount /sys as read-only (exposes kernel info, read-only for security)
+			if err := syscall.Mount("sysfs", "/sys", "sysfs", syscall.MS_RDONLY, ""); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to mount /sys: %v\n", err)
+				os.Exit(1)
+			}
+
 			// Set controlling terminal (fixes "job control turned off" warning)
 			if os.Getenv("MINICONTAINER_TTY") == "1" {
 				unix.IoctlSetInt(int(os.Stdin.Fd()), unix.TIOCSCTTY, 0)

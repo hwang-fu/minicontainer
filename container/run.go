@@ -22,9 +22,11 @@ func prepareRootfs(rootfsPath string) error {
 	if err := os.MkdirAll(filepath.Join(rootfsPath, ".pivot_root"), 0700); err != nil {
 		return err
 	}
-	// Create /proc mount point
-	if err := os.MkdirAll(filepath.Join(rootfsPath, "proc"), 0755); err != nil {
-		return err
+	// Create mount points for virtual filesystems
+	for _, dir := range []string{"proc", "sys"} {
+		if err := os.MkdirAll(filepath.Join(rootfsPath, dir), 0755); err != nil {
+			return err
+		}
 	}
 	return nil
 }
