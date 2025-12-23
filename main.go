@@ -105,6 +105,25 @@ func openPTY() (*os.File, *os.File, error) {
 	}
 
 	// Get the slave PTY name and unlock it
+	slaveName, err := ptsname(master)
+	if err != nil {
+		master.Close()
+		return nil, nil, fmt.Errorf("ptsname failed: %w", err)
+	}
+
+	if err := unlockpt(master); err != nil {
+		master.Close()
+		return nil, nil, fmt.Errorf("unlockpt failed: %w", err)
+	}
+
+	// Open the slave PTY
+	slave, err := os.OpenFile(slaveName, os.O_RDWR, 0)
+	if err != nil {
+		master.Close()
+		return nil, nil, fmt.Errorf("failed to open slave pty: %w", err)
+	}
+
+	return master, slave, nil
 }
 
 // ptsname returns the name of the slave pseudo-terminal device
