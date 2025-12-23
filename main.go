@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -200,6 +201,39 @@ func runWithTTY(cfg ContainerConfig, cmdArgs []string) {
 	}
 	defer master.Close()
 	defer slave.Close()
+
+	// setRawMode returns (restoreFunc, error) - restoreFunc resets terminal on exit
+	restoreFunc, err := setRawMode(int(os.Stdin.Fd()))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to set raw mode: %v\n", err)
+		os.Exit(1)
+	}
+	defer restoreFunc()
+
+	cmd := exec.Command("/proc/self/exe", append([]string{"init"}, cmdArgs...)...)
+	cmd.Stdin = slave
+	cmd.Stdout = slave
+	cmd.Stderr = slave
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID |
+			syscall.CLONE_NEWIPC | syscall.CLONE_NEWUSER | syscall.CLONE_NEWNS,
+		UidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getuid(), Size: 1}},
+		GidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getgid(), Size: 1}},
+		Setsid:      true,
+	}
+	cmd.Env = buildEnv(cfg)
+
+	if err := cmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	slave.Close() // Close slave in parent after child starts
+
+	// Relay I/O: terminal <-> PTY master
+	go io.Copy(master, os.Stdin)
+	go io.Copy(os.Stdout, master)
+
+	cmd.Wait()
 }
 
 func main() {
