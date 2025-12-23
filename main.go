@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"syscall"
 )
 
 func main() {
@@ -21,10 +22,32 @@ func main() {
 			fmt.Fprintln(os.Stderr, "usage: minicontainer run <command> [args...]")
 			os.Exit(1)
 		}
-		containerCommand := os.Args[2]
-		containerArgs := os.Args[3:]
 
-		cmd := exec.Command(containerCommand, containerArgs...)
+		cmd := exec.Command("/proc/self/exe", append([]string{"init"}, os.Args[2:]...)...)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Cloneflags: syscall.CLONE_NEWUTS,
+		}
+
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "init":
+		if len(os.Args) < 3 {
+			fmt.Fprintln(os.Stderr, "init requires a command")
+			os.Exit(1)
+		}
+
+		if err := syscall.Sethostname([]byte("minicontainer")); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to set hostname: %v\n", err)
+			os.Exit(1)
+		}
+
+		cmd := exec.Command(os.Args[2], os.Args[3:]...)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
