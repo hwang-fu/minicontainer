@@ -7,11 +7,11 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// openPTY creates a new pseudo-terminal pair.
+// OpenPTY creates a new pseudo-terminal pair.
 // Returns the master and slave file descriptors.
 // The master is used by the parent (terminal side).
 // The slave is used by the child (container side).
-func openPTY() (*os.File, *os.File, error) {
+func OpenPTY() (*os.File, *os.File, error) {
 	// Open the PTY master (multiplexor)
 	master, err := os.OpenFile("/dev/ptmx", os.O_RDWR, 0)
 	if err != nil {
@@ -56,8 +56,8 @@ func unlockpt(master *os.File) error {
 	return unix.IoctlSetPointerInt(int(master.Fd()), unix.TIOCSPTLCK, 0)
 }
 
-// setRawMode puts the terminal into raw mode and returns a function to restore the original settings.
-func setRawMode(fd int) (func(), error) {
+// SetRawMode puts the terminal into raw mode and returns a function to restore the original settings.
+func SetRawMode(fd int) (func(), error) {
 	// Save current terminal settings
 	oldState, err := unix.IoctlGetTermios(fd, unix.TCGETS)
 	if err != nil {
