@@ -64,12 +64,59 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Chroot into container rootfs if specified
-		// This changes the root directory so container can't see host filesystem
+		// Make all mounts private to this namespace
+		// This prevents mount events from propagating to/from the host
+		// Required for pivot_root to work correctly with user namespaces
+		if err := syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, ""); err != nil {
+			fmt.Fprintf(os.Stderr, "make mounts private failed: %v\n", err)
+			os.Exit(1)
+		}
+
+		// pivot_root into container rootfs if specified
+		// Unlike chroot, pivot_root actually swaps the root mount, preventing escape via file descriptors
 		rootfsPath := os.Getenv("MINICONTAINER_ROOTFS")
 		if rootfsPath != "" {
-			if err := syscall.Chroot(rootfsPath); err != nil {
-				fmt.Fprintf(os.Stderr, "chroot failed: %v\n", err)
+			// 1. Bind mount rootfs to itself (makes it a mount point - required for pivot_root)
+			if err := syscall.Mount(rootfsPath, rootfsPath, "", syscall.MS_BIND|syscall.MS_REC, ""); err != nil {
+				fmt.Fprintf(os.Stderr, "bind mount rootfs failed: %v\n", err)
+				os.Exit(1)
+			}
+
+			// 2. Change to rootfs directory before pivot_root
+			if err := syscall.Chdir(rootfsPath); err != nil {
+				fmt.Fprintf(os.Stderr, "chdir to rootfs failed: %v\n", err)
+				os.Exit(1)
+			}
+
+			// 3. Directory for old root (created by parent before namespace entry)
+			pivotDir := ".pivot_root"
+
+			// 4. pivot_root swaps the root mount
+			// "." becomes new root, old root moves to ".pivot_root"
+			if err := unix.PivotRoot(".", pivotDir); err != nil {
+				fmt.Fprintf(os.Stderr, "pivot_root failed: %v\n", err)
+				os.Exit(1)
+			}
+
+			// 5. Change to new root
+			if err := syscall.Chdir("/"); err != nil {
+				fmt.Fprintf(os.Stderr, "chdir to / failed: %v\n", err)
+				os.Exit(1)
+			}
+
+			// 6. Unmount old root (MNT_DETACH allows unmount even if busy)
+			if err := unix.Unmount("/"+pivotDir, unix.MNT_DETACH); err != nil {
+				fmt.Fprintf(os.Stderr, "unmount old root failed: %v\n", err)
+				os.Exit(1)
+			}
+
+			// 7. Remove the now-empty pivot directory (best effort - may fail in user namespace)
+			os.Remove("/" + pivotDir)
+
+			// 8. Mount fresh /proc for this PID namespace (must happen after pivot_root)
+			// This makes 'ps' and /proc/* show only container processes
+			if err := syscall.Mount("proc", "/proc", "proc", 0, ""); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to mount /proc: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -77,19 +124,6 @@ func main() {
 			if os.Getenv("MINICONTAINER_TTY") == "1" {
 				unix.IoctlSetInt(int(os.Stdin.Fd()), unix.TIOCSCTTY, 0)
 			}
-
-			// Must chdir after chroot to actually enter the new root
-			if err := syscall.Chdir("/"); err != nil {
-				fmt.Fprintf(os.Stderr, "chdir failed: %v\n", err)
-				os.Exit(1)
-			}
-		}
-
-		// Mount fresh /proc for this PID namespace
-		// This makes 'ps' and /proc/* show only container processes
-		if err := syscall.Mount("proc", "/proc", "proc", 0, ""); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to mount /proc: %v\n", err)
-			os.Exit(1)
 		}
 
 		// Find absolute path of the command to execute
