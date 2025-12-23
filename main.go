@@ -65,6 +65,22 @@ func parseRunFlags(args []string) (ContainerConfig, []string) {
 			cfg.AutoRemove = true
 			i++
 
+		case "-i":
+			// Interactive mode: keep stdin attached
+			cfg.Interactive = true
+			i++
+
+		case "-t":
+			// TTY mode: allocate pseudo-terminal
+			cfg.AllocateTTY = true
+			i++
+
+		case "-it", "-ti":
+			// Combined interactive + TTY (common shorthand)
+			cfg.Interactive = true
+			cfg.AllocateTTY = true
+			i++
+
 		default:
 			// First non-flag argument is the command to run
 			// Everything after is passed to that command
