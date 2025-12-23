@@ -28,7 +28,16 @@ func main() {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Cloneflags: syscall.CLONE_NEWUTS,
+			Cloneflags: syscall.CLONE_NEWUTS |
+				syscall.CLONE_NEWPID |
+				syscall.CLONE_NEWIPC |
+				syscall.CLONE_NEWUSER,
+			UidMappings: []syscall.SysProcIDMap{
+				{ContainerID: 0, HostID: os.Getuid(), Size: 1},
+			},
+			GidMappings: []syscall.SysProcIDMap{
+				{ContainerID: 0, HostID: os.Getgid(), Size: 1},
+			},
 		}
 
 		if err := cmd.Run(); err != nil {
@@ -47,13 +56,15 @@ func main() {
 			os.Exit(1)
 		}
 
-		cmd := exec.Command(os.Args[2], os.Args[3:]...)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		// Find the absolute path of the command
+		path, err := exec.LookPath(os.Args[2])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "command not found: %s\n", os.Args[2])
+			os.Exit(1)
+		}
 
-		if err := cmd.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		if err := syscall.Exec(path, os.Args[2:], os.Environ()); err != nil {
+			fmt.Fprintf(os.Stderr, "exec failed: %v\n", err)
 			os.Exit(1)
 		}
 
