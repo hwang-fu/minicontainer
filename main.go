@@ -31,7 +31,8 @@ func main() {
 			Cloneflags: syscall.CLONE_NEWUTS |
 				syscall.CLONE_NEWPID |
 				syscall.CLONE_NEWIPC |
-				syscall.CLONE_NEWUSER,
+				syscall.CLONE_NEWUSER |
+				syscall.CLONE_NEWNS,
 			UidMappings: []syscall.SysProcIDMap{
 				{ContainerID: 0, HostID: os.Getuid(), Size: 1},
 			},
@@ -60,6 +61,12 @@ func main() {
 		path, err := exec.LookPath(os.Args[2])
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "command not found: %s\n", os.Args[2])
+			os.Exit(1)
+		}
+
+		// Mount fresh /proc for this PID namespace
+		if err := syscall.Mount("proc", "/proc", "proc", 0, ""); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to mount /proc: %v\n", err)
 			os.Exit(1)
 		}
 
