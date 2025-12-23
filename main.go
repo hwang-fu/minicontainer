@@ -236,6 +236,26 @@ func runWithTTY(cfg ContainerConfig, cmdArgs []string) {
 	cmd.Wait()
 }
 
+// runWithoutTTY runs container with direct stdin/stdout passthrough.
+func runWithoutTTY(cfg ContainerConfig, cmdArgs []string) {
+	cmd := exec.Command("/proc/self/exe", append([]string{"init"}, cmdArgs...)...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID |
+			syscall.CLONE_NEWIPC | syscall.CLONE_NEWUSER | syscall.CLONE_NEWNS,
+		UidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getuid(), Size: 1}},
+		GidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getgid(), Size: 1}},
+	}
+	cmd.Env = buildEnv(cfg)
+
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
