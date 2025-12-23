@@ -2,261 +2,16 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
 
+	"github.com/hwang-fu/minicontainer/cmd"
+	"github.com/hwang-fu/minicontainer/container"
+
 	"golang.org/x/sys/unix"
 )
-
-// ContainerConfig holds the configuration options for a container.
-// These are parsed from CLI flags in the run command and passed
-// to the init process via environment variables.
-type ContainerConfig struct {
-	RootfsPath  string   // Path to container's root filesystem
-	Hostname    string   // Custom hostname for the container
-	Name        string   // Container name (for identification in ps, stop, etc.)
-	Env         []string // User-specified environment variables (KEY=VALUE format)
-	AutoRemove  bool     // If true, remove container filesystem on exit
-	Interactive bool     // -i: Keep stdin open for interactive input
-	AllocateTTY bool     // -t: Allocate pseudo-terminal for the container
-}
-
-// parseRunFlags parses command-line flags for the run command.
-// It returns the parsed config and the remaining arguments (the command to run).
-// Example: parseRunFlags(["--rootfs", "/tmp/alpine", "-e", "FOO=bar", "/bin/sh"])
-// Returns: config{RootfsPath: "/tmp/alpine", Env: ["FOO=bar"]}, ["/bin/sh"]
-func parseRunFlags(args []string) (ContainerConfig, []string) {
-	cfg := ContainerConfig{}
-
-	i := 0
-	for i < len(args) {
-		switch args[i] {
-		case "--rootfs":
-			// Container root filesystem path
-			if i+1 < len(args) {
-				cfg.RootfsPath = args[i+1]
-				i += 2
-			}
-
-		case "--hostname":
-			// Custom hostname for UTS namespace
-			if i+1 < len(args) {
-				cfg.Hostname = args[i+1]
-				i += 2
-			}
-
-		case "--name":
-			// Container name for later reference (ps, stop, rm)
-			if i+1 < len(args) {
-				cfg.Name = args[i+1]
-				i += 2
-			}
-
-		case "-e", "--env":
-			// Environment variable in KEY=VALUE format
-			// Can be specified multiple times
-			if i+1 < len(args) {
-				cfg.Env = append(cfg.Env, args[i+1])
-				i += 2
-			}
-
-		case "--rm":
-			// Mark container for auto-removal on exit
-			cfg.AutoRemove = true
-			i++
-
-		case "-i":
-			// Interactive mode: keep stdin attached
-			cfg.Interactive = true
-			i++
-
-		case "-t":
-			// TTY mode: allocate pseudo-terminal
-			cfg.AllocateTTY = true
-			i++
-
-		case "-it", "-ti":
-			// Combined interactive + TTY (common shorthand)
-			cfg.Interactive = true
-			cfg.AllocateTTY = true
-			i++
-
-		default:
-			// First non-flag argument is the command to run
-			// Everything after is passed to that command
-			return cfg, args[i:]
-		}
-	}
-	return cfg, []string{}
-}
-
-// openPTY creates a new pseudo-terminal pair.
-// Returns the master and slave file descriptors.
-// The master is used by the parent (terminal side).
-// The slave is used by the child (container side).
-func openPTY() (*os.File, *os.File, error) {
-	// Open the PTY master (multiplexor)
-	master, err := os.OpenFile("/dev/ptmx", os.O_RDWR, 0)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to open /dev/ptmx: %w", err)
-	}
-
-	// Get the slave PTY name and unlock it
-	slaveName, err := ptsname(master)
-	if err != nil {
-		master.Close()
-		return nil, nil, fmt.Errorf("ptsname failed: %w", err)
-	}
-
-	if err = unlockpt(master); err != nil {
-		master.Close()
-		return nil, nil, fmt.Errorf("unlockpt failed: %w", err)
-	}
-
-	// Open the slave PTY
-	slave, err := os.OpenFile(slaveName, os.O_RDWR, 0)
-	if err != nil {
-		master.Close()
-		return nil, nil, fmt.Errorf("failed to open slave pty: %w", err)
-	}
-
-	return master, slave, nil
-}
-
-// ptsname returns the name of the slave pseudo-terminal device
-// corresponding to the given master.
-func ptsname(master *os.File) (string, error) {
-	n, err := unix.IoctlGetInt(int(master.Fd()), unix.TIOCGPTN)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("/dev/pts/%d", n), nil
-}
-
-// unlockpt unlocks the slave pseudo-terminal device.
-// Must be called before the slave can be opened.
-func unlockpt(master *os.File) error {
-	return unix.IoctlSetPointerInt(int(master.Fd()), unix.TIOCSPTLCK, 0)
-}
-
-// setRawMode puts the terminal into raw mode and returns a function to restore the original settings.
-func setRawMode(fd int) (func(), error) {
-	// Save current terminal settings
-	oldState, err := unix.IoctlGetTermios(fd, unix.TCGETS)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get terminal state: %w", err)
-	}
-
-	// Create raw mode settings
-	newState := *oldState
-	// Disable canonical mode (line buffering) and echo
-	newState.Lflag &^= unix.ICANON | unix.ECHO | unix.ISIG | unix.IEXTEN
-	// Disable input processing
-	newState.Iflag &^= unix.BRKINT | unix.ICRNL | unix.INPCK | unix.ISTRIP | unix.IXON
-	// Disable output processing
-	newState.Oflag &^= unix.OPOST
-	// Set character size to 8 bits
-	newState.Cflag &^= unix.CSIZE | unix.PARENB
-	newState.Cflag |= unix.CS8
-	// Read returns immediately with whatever is available
-	newState.Cc[unix.VMIN] = 1
-	newState.Cc[unix.VTIME] = 0
-
-	// Apply raw mode
-	if err := unix.IoctlSetTermios(fd, unix.TCSETS, &newState); err != nil {
-		return nil, fmt.Errorf("failed to set raw mode: %w", err)
-	}
-
-	// Return restore function
-	return func() {
-		unix.IoctlSetTermios(fd, unix.TCSETS, oldState)
-	}, nil
-}
-
-// buildEnv creates environment variables to pass to init process.
-func buildEnv(cfg ContainerConfig) []string {
-	env := os.Environ()
-	if cfg.RootfsPath != "" {
-		env = append(env, "MINICONTAINER_ROOTFS="+cfg.RootfsPath)
-	}
-	if cfg.Hostname != "" {
-		env = append(env, "MINICONTAINER_HOSTNAME="+cfg.Hostname)
-	}
-	for _, e := range cfg.Env {
-		env = append(env, "MINICONTAINER_ENV_"+e)
-	}
-	return env
-}
-
-// runWithTTY runs the container with pseudo-terminal for interactive mode.
-// Creates PTY, sets raw mode, and relays I/O between terminal and container.
-func runWithTTY(cfg ContainerConfig, cmdArgs []string) {
-	master, slave, err := openPTY()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create pty: %v\n", err)
-		os.Exit(1)
-	}
-	defer master.Close()
-	defer slave.Close()
-
-	// setRawMode returns (restoreFunc, error) - restoreFunc resets terminal on exit
-	restoreFunc, err := setRawMode(int(os.Stdin.Fd()))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to set raw mode: %v\n", err)
-		os.Exit(1)
-	}
-	defer restoreFunc()
-
-	cmd := exec.Command("/proc/self/exe", append([]string{"init"}, cmdArgs...)...)
-	cmd.Stdin = slave
-	cmd.Stdout = slave
-	cmd.Stderr = slave
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID |
-			syscall.CLONE_NEWIPC | syscall.CLONE_NEWUSER | syscall.CLONE_NEWNS,
-		UidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getuid(), Size: 1}},
-		GidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getgid(), Size: 1}},
-		Setsid:      true,
-	}
-	cmd.Env = append(buildEnv(cfg), "MINICONTAINER_TTY=1")
-
-	if err := cmd.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-	slave.Close() // Close slave in parent after child starts
-
-	// Relay I/O: terminal <-> PTY master
-	go io.Copy(master, os.Stdin)
-	go io.Copy(os.Stdout, master)
-
-	cmd.Wait()
-	master.Close()  // Stops io.Copy goroutines
-	restoreFunc()   // Restore terminal - must call explicitly before exit
-}
-
-// runWithoutTTY runs container with direct stdin/stdout passthrough.
-func runWithoutTTY(cfg ContainerConfig, cmdArgs []string) {
-	cmd := exec.Command("/proc/self/exe", append([]string{"init"}, cmdArgs...)...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID |
-			syscall.CLONE_NEWIPC | syscall.CLONE_NEWUSER | syscall.CLONE_NEWNS,
-		UidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getuid(), Size: 1}},
-		GidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getgid(), Size: 1}},
-	}
-	cmd.Env = buildEnv(cfg)
-
-	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -275,7 +30,7 @@ func main() {
 		}
 
 		// Parse CLI flags and extract the command to run
-		cfg, cmdArgs := parseRunFlags(os.Args[2:])
+		cfg, cmdArgs := cmd.ParseRunFlags(os.Args[2:])
 		if len(cmdArgs) < 1 {
 			fmt.Fprintln(os.Stderr, "usage: minicontainer run [flags] <command> [args...]")
 			os.Exit(1)
@@ -283,10 +38,10 @@ func main() {
 
 		if cfg.Interactive && cfg.AllocateTTY {
 			// Interactive TTY mode: create PTY and relay I/O
-			runWithTTY(cfg, cmdArgs)
+			container.RunWithTTY(cfg, cmdArgs)
 		} else {
 			// Non-interactive mode: direct stdin/stdout passthrough
-			runWithoutTTY(cfg, cmdArgs)
+			container.RunWithoutTTY(cfg, cmdArgs)
 		}
 
 	case "init":
