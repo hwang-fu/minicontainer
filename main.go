@@ -111,7 +111,7 @@ func openPTY() (*os.File, *os.File, error) {
 		return nil, nil, fmt.Errorf("ptsname failed: %w", err)
 	}
 
-	if err := unlockpt(master); err != nil {
+	if err = unlockpt(master); err != nil {
 		master.Close()
 		return nil, nil, fmt.Errorf("unlockpt failed: %w", err)
 	}
@@ -139,7 +139,7 @@ func ptsname(master *os.File) (string, error) {
 // unlockpt unlocks the slave pseudo-terminal device.
 // Must be called before the slave can be opened.
 func unlockpt(master *os.File) error {
-	return unix.IoctlSetInt(int(master.Fd()), unix.TIOCSPTLCK, 0)
+	return unix.IoctlSetPointerInt(int(master.Fd()), unix.TIOCSPTLCK, 0)
 }
 
 // setRawMode puts the terminal into raw mode and returns a function to restore the original settings.
@@ -221,7 +221,7 @@ func runWithTTY(cfg ContainerConfig, cmdArgs []string) {
 		GidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getgid(), Size: 1}},
 		Setsid:      true,
 	}
-	cmd.Env = buildEnv(cfg)
+	cmd.Env = append(buildEnv(cfg), "MINICONTAINER_TTY=1")
 
 	if err := cmd.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -234,6 +234,8 @@ func runWithTTY(cfg ContainerConfig, cmdArgs []string) {
 	go io.Copy(os.Stdout, master)
 
 	cmd.Wait()
+	master.Close()  // Stops io.Copy goroutines
+	restoreFunc()   // Restore terminal - must call explicitly before exit
 }
 
 // runWithoutTTY runs container with direct stdin/stdout passthrough.
@@ -274,57 +276,17 @@ func main() {
 
 		// Parse CLI flags and extract the command to run
 		cfg, cmdArgs := parseRunFlags(os.Args[2:])
+		if len(cmdArgs) < 1 {
+			fmt.Fprintln(os.Stderr, "usage: minicontainer run [flags] <command> [args...]")
+			os.Exit(1)
+		}
 
 		if cfg.Interactive && cfg.AllocateTTY {
 			// Interactive TTY mode: create PTY and relay I/O
-			// TODO runWithTTY(cfg, cmdArgs)
+			runWithTTY(cfg, cmdArgs)
 		} else {
 			// Non-interactive mode: direct stdin/stdout passthrough
-			// TODO runWithoutTTY(cfg, cmdArgs)
-		}
-
-		// Re-exec ourselves as "init" inside new namespaces
-		// The init process will set up the container environment and exec the user command
-		cmd := exec.Command("/proc/self/exe", append([]string{"init"}, cmdArgs...)...)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		// Configure Linux namespaces for container isolation
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Cloneflags: syscall.CLONE_NEWUTS | // New hostname namespace
-				syscall.CLONE_NEWPID | // New PID namespace (process is PID 1)
-				syscall.CLONE_NEWIPC | // New IPC namespace (isolated shared memory, semaphores)
-				syscall.CLONE_NEWUSER | // New user namespace (UID/GID mapping)
-				syscall.CLONE_NEWNS, // New mount namespace (isolated mounts)
-			// Map container root (UID 0) to current user on host
-			// This allows unprivileged container operation
-			UidMappings: []syscall.SysProcIDMap{
-				{ContainerID: 0, HostID: os.Getuid(), Size: 1},
-			},
-			GidMappings: []syscall.SysProcIDMap{
-				{ContainerID: 0, HostID: os.Getgid(), Size: 1},
-			},
-		}
-
-		// Pass configuration to init process via environment variables
-		// We use MINICONTAINER_ prefix to avoid conflicts with user env vars
-		cmd.Env = os.Environ()
-		if cfg.RootfsPath != "" {
-			cmd.Env = append(cmd.Env, "MINICONTAINER_ROOTFS="+cfg.RootfsPath)
-		}
-		if cfg.Hostname != "" {
-			cmd.Env = append(cmd.Env, "MINICONTAINER_HOSTNAME="+cfg.Hostname)
-		}
-
-		// Pass user-specified env vars with a prefix so init can extract them
-		for _, e := range cfg.Env {
-			cmd.Env = append(cmd.Env, "MINICONTAINER_ENV_"+e)
-		}
-
-		if err := cmd.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
+			runWithoutTTY(cfg, cmdArgs)
 		}
 
 	case "init":
@@ -355,6 +317,12 @@ func main() {
 				fmt.Fprintf(os.Stderr, "chroot failed: %v\n", err)
 				os.Exit(1)
 			}
+
+			// Set controlling terminal (fixes "job control turned off" warning)
+			if os.Getenv("MINICONTAINER_TTY") == "1" {
+				unix.IoctlSetInt(int(os.Stdin.Fd()), unix.TIOCSCTTY, 0)
+			}
+
 			// Must chdir after chroot to actually enter the new root
 			if err := syscall.Chdir("/"); err != nil {
 				fmt.Fprintf(os.Stderr, "chdir failed: %v\n", err)
