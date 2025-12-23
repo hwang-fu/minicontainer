@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
-	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
@@ -174,6 +173,33 @@ func setRawMode(fd int) (func(), error) {
 	return func() {
 		unix.IoctlSetTermios(fd, unix.TCSETS, oldState)
 	}, nil
+}
+
+// buildEnv creates environment variables to pass to init process.
+func buildEnv(cfg ContainerConfig) []string {
+	env := os.Environ()
+	if cfg.RootfsPath != "" {
+		env = append(env, "MINICONTAINER_ROOTFS="+cfg.RootfsPath)
+	}
+	if cfg.Hostname != "" {
+		env = append(env, "MINICONTAINER_HOSTNAME="+cfg.Hostname)
+	}
+	for _, e := range cfg.Env {
+		env = append(env, "MINICONTAINER_ENV_"+e)
+	}
+	return env
+}
+
+// runWithTTY runs the container with pseudo-terminal for interactive mode.
+// Creates PTY, sets raw mode, and relays I/O between terminal and container.
+func runWithTTY(cfg ContainerConfig, cmdArgs []string) {
+	master, slave, err := openPTY()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create pty: %v\n", err)
+		os.Exit(1)
+	}
+	defer master.Close()
+	defer slave.Close()
 }
 
 func main() {
