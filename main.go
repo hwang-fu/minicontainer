@@ -37,6 +37,12 @@ func main() {
 			os.Exit(1)
 		}
 
+		if cfg.RootfsPath == "" {
+			fmt.Fprintln(os.Stderr, "error: --rootfs is required")
+			fmt.Fprintln(os.Stderr, "usage: minicontainer run --rootfs <path> [flags] <command> [args...]")
+			os.Exit(1)
+		}
+
 		if cfg.AllocateTTY {
 			// Interactive TTY mode: create PTY and relay I/O
 			container.RunWithTTY(cfg, cmdArgs)
