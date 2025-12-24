@@ -16,6 +16,7 @@ A Linux container runtime written in Go for educational purposes. Implements the
 - **Filesystem Isolation**
   - `pivot_root` for secure root filesystem switching
   - Overlayfs for copy-on-write (changes don't affect base rootfs)
+  - Volume mounts (`-v host:container[:ro]`)
   - `/proc` mount (shows only container processes)
   - `/sys` mount (read-only)
   - `/dev` with essential devices (null, zero, random, urandom, tty)
@@ -26,9 +27,10 @@ A Linux container runtime written in Go for educational purposes. Implements the
   - Full interactive mode (`-it`)
 
 - **CLI Flags**
-  - `--rootfs` - specify container root filesystem
+  - `--rootfs` - specify container root filesystem (required)
   - `--hostname` - custom container hostname
   - `-e, --env` - environment variables
+  - `-v, --volume` - bind mount volumes (`host:container` or `host:container:ro`)
   - `-i` - keep stdin open
   - `-t` - allocate pseudo-TTY
   - `--name` - container name (placeholder)
@@ -105,7 +107,8 @@ minicontainer/
 │   └── pty.go           # OpenPTY(), SetRawMode()
 ├── fs/
 │   ├── dev.go           # MountDevTmpfs(), CreateDeviceNodes()
-│   └── overlay.go       # SetupOverlayfs(), mountOverlay()
+│   ├── overlay.go       # SetupOverlayfs(), mountOverlay()
+│   └── volume.go        # MountVolumes(), ParseVolumeSpec()
 ├── Makefile             # build, test, clean, fmt, vet, check
 └── .claude/             # Project documentation
     ├── CLAUDE.md        # Development guide
