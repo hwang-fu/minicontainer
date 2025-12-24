@@ -2,7 +2,10 @@ package fs
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 // VolumeMount represents a bind mount from host to container.
@@ -35,4 +38,31 @@ func ParseVolumeSpec(spec string) (VolumeMount, error) {
 	}
 
 	return vol, nil
+}
+
+// MountVolume bind-mounts a single volume into the container rootfs.
+// Must be called after overlayfs is set up, before pivot_root.
+// The containerPath is relative to rootfsPath.
+func MountVolume(rootfsPath string, vol VolumeMount) error {
+	// Create the mount point inside container rootfs
+	targetPath := filepath.Join(rootfsPath, vol.ContainerPath)
+	if err := os.MkdirAll(targetPath, 0o755); err != nil {
+		return fmt.Errorf("create mount point %s: %w", targetPath, err)
+	}
+
+	// Bind mount the host path to container path
+	flags := syscall.MS_BIND | syscall.MS_REC
+	if err := syscall.Mount(vol.HostPath, targetPath, "", uintptr(flags), ""); err != nil {
+		return fmt.Errorf("bind mount %s -> %s: %w", vol.HostPath, targetPath, err)
+	}
+
+	// Remount as read-only if requested
+	if vol.ReadOnly {
+		flags := syscall.MS_BIND | syscall.MS_REC | syscall.MS_RDONLY | syscall.MS_REMOUNT
+		if err := syscall.Mount("", targetPath, "", uintptr(flags), ""); err != nil {
+			return fmt.Errorf("remount read-only %s: %w", targetPath, err)
+		}
+	}
+
+	return nil
 }
