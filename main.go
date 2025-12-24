@@ -24,6 +24,11 @@ func main() {
 	case "version":
 		fmt.Println("minicontainer version 0.1.0")
 
+	case "prune":
+		fmt.Println("Cleaning up stale overlay directories...")
+		fs.CleanupStaleOverlays()
+		fmt.Println("Done.")
+
 	case "run":
 		if len(os.Args) < 3 {
 			fmt.Fprintln(os.Stderr, "usage: minicontainer run [flags] <command> [args...]")
@@ -187,4 +192,9 @@ func main() {
 
 func printUsage() {
 	fmt.Println("Usage: ./minicontainer <command> [options]")
+	fmt.Println("")
+	fmt.Println("Commands:")
+	fmt.Println("  run      Run a container")
+	fmt.Println("  prune    Remove stale overlay directories")
+	fmt.Println("  version  Show version")
 }
