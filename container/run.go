@@ -19,12 +19,12 @@ func prepareRootfs(rootfsPath string) error {
 		return nil
 	}
 	// Create .pivot_root directory for pivot_root syscall
-	if err := os.MkdirAll(filepath.Join(rootfsPath, ".pivot_root"), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(rootfsPath, ".pivot_root"), 0o700); err != nil {
 		return err
 	}
 	// Create mount points for virtual filesystems
 	for _, dir := range []string{"proc", "sys"} {
-		if err := os.MkdirAll(filepath.Join(rootfsPath, dir), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Join(rootfsPath, dir), 0o755); err != nil {
 			return err
 		}
 	}
@@ -98,9 +98,12 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 	}
 	slave.Close() // Close slave in parent after child starts
 
-	// Relay I/O: terminal <-> PTY master
-	go io.Copy(master, os.Stdin)
+	// Relay I/O: PTY master -> stdout (always)
 	go io.Copy(os.Stdout, master)
+	// Only relay stdin -> PTY master if interactive mode
+	if cfg.Interactive {
+		go io.Copy(master, os.Stdin)
+	}
 
 	cmd.Wait()
 	master.Close() // Stops io.Copy goroutines
@@ -116,7 +119,10 @@ func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 	}
 
 	cmd := exec.Command("/proc/self/exe", append([]string{"init"}, cmdArgs...)...)
-	cmd.Stdin = os.Stdin
+	// Only connect stdin if interactive mode (-i flag)
+	if cfg.Interactive {
+		cmd.Stdin = os.Stdin
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
