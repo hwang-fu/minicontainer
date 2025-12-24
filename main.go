@@ -37,7 +37,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		if cfg.Interactive && cfg.AllocateTTY {
+		if cfg.AllocateTTY {
 			// Interactive TTY mode: create PTY and relay I/O
 			container.RunWithTTY(cfg, cmdArgs)
 		} else {
