@@ -26,7 +26,12 @@ A Linux container runtime written in Go for educational purposes. Implements the
   - Interactive stdin (`-i` flag)
   - Full interactive mode (`-it`)
 
-- **CLI Flags**
+- **CLI Commands**
+  - `run` - run a container
+  - `prune` - remove stale overlay directories
+  - `version` - show version
+
+- **CLI Flags (for `run`)**
   - `--rootfs` - specify container root filesystem (required)
   - `--hostname` - custom container hostname
   - `-e, --env` - environment variables
@@ -106,6 +111,7 @@ minicontainer/
 ├── runtime/
 │   └── pty.go           # OpenPTY(), SetRawMode()
 ├── fs/
+│   ├── cleanup.go       # CleanupStaleOverlays(), getMountedPaths()
 │   ├── dev.go           # MountDevTmpfs(), CreateDeviceNodes()
 │   ├── overlay.go       # SetupOverlayfs(), mountOverlay()
 │   └── volume.go        # MountVolumes(), ParseVolumeSpec()
