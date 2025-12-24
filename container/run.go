@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/hwang-fu/minicontainer/cmd"
+	"github.com/hwang-fu/minicontainer/fs"
 	"github.com/hwang-fu/minicontainer/runtime"
 )
 
@@ -71,6 +72,19 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 	}
 	defer restoreFunc()
 
+	// Setup overlayfs if rootfs is specified
+	var overlayCleanup func() error
+	actualRootfs := cfg.RootfsPath
+	if cfg.RootfsPath != "" {
+		overlay, cleanup, err := fs.SetupOverlayfs(cfg.RootfsPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to setup overlay: %v\n", err)
+			os.Exit(1)
+		}
+		overlayCleanup = cleanup
+		actualRootfs = overlay.MergedDir
+	}
+
 	cmd := exec.Command("/proc/self/exe", append([]string{"init"}, cmdArgs...)...)
 	cmd.Stdin = slave
 	cmd.Stdout = slave
@@ -90,7 +104,10 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		sysProcAttr.GidMappings = []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getgid(), Size: 1}}
 	}
 	cmd.SysProcAttr = sysProcAttr
-	cmd.Env = append(BuildEnv(cfg), "MINICONTAINER_TTY=1")
+
+	cfgWithOverlay := cfg
+	cfgWithOverlay.RootfsPath = actualRootfs
+	cmd.Env = append(BuildEnv(cfgWithOverlay), "MINICONTAINER_TTY=1")
 
 	if err := cmd.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -106,6 +123,9 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 	}
 
 	cmd.Wait()
+	if overlayCleanup != nil {
+		overlayCleanup()
+	}
 	master.Close() // Stops io.Copy goroutines
 	restoreFunc()  // Restore terminal - must call explicitly before exit
 }
@@ -116,6 +136,19 @@ func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 	if err := prepareRootfs(cfg.RootfsPath); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to prepare rootfs: %v\n", err)
 		os.Exit(1)
+	}
+
+	// Setup overlayfs if rootfs is specified
+	var overlayCleanup func() error
+	actualRootfs := cfg.RootfsPath
+	if cfg.RootfsPath != "" {
+		overlay, cleanup, err := fs.SetupOverlayfs(cfg.RootfsPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to setup overlay: %v\n", err)
+			os.Exit(1)
+		}
+		overlayCleanup = cleanup
+		actualRootfs = overlay.MergedDir
 	}
 
 	cmd := exec.Command("/proc/self/exe", append([]string{"init"}, cmdArgs...)...)
@@ -139,10 +172,19 @@ func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		sysProcAttr.GidMappings = []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getgid(), Size: 1}}
 	}
 	cmd.SysProcAttr = sysProcAttr
-	cmd.Env = BuildEnv(cfg)
+
+	cfgWithOverlay := cfg
+	cfgWithOverlay.RootfsPath = actualRootfs
+	cmd.Env = BuildEnv(cfgWithOverlay)
 
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		if overlayCleanup != nil {
+			overlayCleanup()
+		}
 		os.Exit(1)
+	}
+	if overlayCleanup != nil {
+		overlayCleanup()
 	}
 }
