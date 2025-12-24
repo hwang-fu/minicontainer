@@ -15,6 +15,7 @@ A Linux container runtime written in Go for educational purposes. Implements the
 
 - **Filesystem Isolation**
   - `pivot_root` for secure root filesystem switching
+  - Overlayfs for copy-on-write (changes don't affect base rootfs)
   - `/proc` mount (shows only container processes)
   - `/sys` mount (read-only)
   - `/dev` with essential devices (null, zero, random, urandom, tty)
@@ -103,7 +104,8 @@ minicontainer/
 ├── runtime/
 │   └── pty.go           # OpenPTY(), SetRawMode()
 ├── fs/
-│   └── dev.go           # MountDevTmpfs(), CreateDeviceNodes()
+│   ├── dev.go           # MountDevTmpfs(), CreateDeviceNodes()
+│   └── overlay.go       # SetupOverlayfs(), mountOverlay()
 ├── Makefile             # build, test, clean, fmt, vet, check
 └── .claude/             # Project documentation
     ├── CLAUDE.md        # Development guide
