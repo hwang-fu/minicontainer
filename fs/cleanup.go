@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 )
 
 // CleanupStaleOverlays removes orphaned overlay directories from previous runs.
