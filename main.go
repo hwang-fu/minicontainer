@@ -9,6 +9,7 @@ import (
 
 	"github.com/hwang-fu/minicontainer/cmd"
 	"github.com/hwang-fu/minicontainer/container"
+	"github.com/hwang-fu/minicontainer/fs"
 
 	"golang.org/x/sys/unix"
 )
@@ -123,6 +124,16 @@ func main() {
 			// 9. Mount /sys as read-only (exposes kernel info, read-only for security)
 			if err := syscall.Mount("sysfs", "/sys", "sysfs", syscall.MS_RDONLY, ""); err != nil {
 				fmt.Fprintf(os.Stderr, "failed to mount /sys: %v\n", err)
+				os.Exit(1)
+			}
+
+			// 10. Setup /dev with essential device nodes
+			if err := fs.MountDevTmpfs(); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to mount /dev: %v\n", err)
+				os.Exit(1)
+			}
+			if err := fs.CreateDeviceNodes(); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to create device nodes: %v\n", err)
 				os.Exit(1)
 			}
 
