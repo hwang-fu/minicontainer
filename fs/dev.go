@@ -1,10 +1,26 @@
 package fs
 
+import (
+	"fmt"
+	"syscall"
+)
+
 // MountDevTmpfs mounts a tmpfs filesystem at /dev inside the container.
 // This provides an empty, writable /dev directory for device nodes.
 // Must be called after pivot_root when "/" is the container's root.
 func MountDevTmpfs() error {
-	panic("TODO: not implemented")
+	// Mount tmpfs at /dev with mode 755 (rwxr-xr-x)
+	// - "tmpfs" as source is conventional (not a real path)
+	// - "mode=755" sets directory permissions
+	if err := syscall.Mount(
+		"tmpfs",
+		"/dev",
+		"tmpfs",
+		0,
+		"mode=755"); err != nil {
+		return fmt.Errorf("mount tmpfs on /dev: %w", err)
+	}
+	return nil
 }
 
 // CreateDeviceNodes creates essential device nodes in /dev.
