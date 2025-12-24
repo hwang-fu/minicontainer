@@ -9,21 +9,27 @@ import (
 )
 
 // CleanupStaleOverlays removes orphaned overlay directories from previous runs.
-// Scans /tmp for minicontainer-overlay-* directories, unmounts if needed, and removes.
+// Only removes directories where the merged dir is NOT currently mounted.
 // Called at startup before creating new overlays.
 func CleanupStaleOverlays() {
 	pattern := "/tmp/minicontainer-overlay-*"
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
-		return // Ignore glob errors
+		return
 	}
 
-	for _, dir := range matches {
-		// Try to unmount merged directory (may or may not be mounted)
-		mergedDir := filepath.Join(dir, "merged")
-		syscall.Unmount(mergedDir, 0) // Ignore errors - may not be mounted
+	// Get list of currently mounted paths
+	mounted := getMountedPaths()
 
-		// Remove the entire directory tree
+	for _, dir := range matches {
+		mergedDir := filepath.Join(dir, "merged")
+
+		// Skip if still mounted (in use by another container)
+		if mounted[mergedDir] {
+			continue
+		}
+
+		// Not mounted - safe to remove orphaned directory
 		os.RemoveAll(dir)
 	}
 }
