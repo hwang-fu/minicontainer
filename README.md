@@ -131,7 +131,7 @@ make clean
 
 **Junzhe Wang**
 - junzhe.hwangfu@gmail.com (for code contribution, bug report, and so on)
-- junzhe.wang2002@gmail.com (for job opportunities)
+- junzhe.wang2002@gmail.com (for potential job offers or co-working opportunities)
 
 ## License
 
