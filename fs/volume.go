@@ -66,3 +66,17 @@ func MountVolume(rootfsPath string, vol VolumeMount) error {
 
 	return nil
 }
+
+// MountVolumes parses and mounts all volume specifications.
+func MountVolumes(rootfsPath string, specs []string) error {
+	for _, spec := range specs {
+		vol, err := ParseVolumeSpec(spec)
+		if err != nil {
+			return err
+		}
+		if err := MountVolume(rootfsPath, vol); err != nil {
+			return err
+		}
+	}
+	return nil
+}
