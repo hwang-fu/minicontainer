@@ -44,6 +44,10 @@ func BuildEnv(cfg cmd.ContainerConfig) []string {
 	for _, e := range cfg.Env {
 		env = append(env, "MINICONTAINER_ENV_"+e)
 	}
+	// Pass volume specifications to init
+	for i, v := range cfg.Volumes {
+		env = append(env, fmt.Sprintf("MINICONTAINER_VOLUME_%d=%s", i, v))
+	}
 	return env
 }
 
@@ -83,6 +87,17 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		}
 		overlayCleanup = cleanup
 		actualRootfs = overlay.MergedDir
+	}
+
+	// Mount volumes into the container rootfs
+	if len(cfg.Volumes) > 0 && actualRootfs != "" {
+		if err := fs.MountVolumes(actualRootfs, cfg.Volumes); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to mount volumes: %v\n", err)
+			if overlayCleanup != nil {
+				overlayCleanup()
+			}
+			os.Exit(1)
+		}
 	}
 
 	cmd := exec.Command("/proc/self/exe", append([]string{"init"}, cmdArgs...)...)
@@ -149,6 +164,17 @@ func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		}
 		overlayCleanup = cleanup
 		actualRootfs = overlay.MergedDir
+	}
+
+	// Mount volumes into the container rootfs
+	if len(cfg.Volumes) > 0 && actualRootfs != "" {
+		if err := fs.MountVolumes(actualRootfs, cfg.Volumes); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to mount volumes: %v\n", err)
+			if overlayCleanup != nil {
+				overlayCleanup()
+			}
+			os.Exit(1)
+		}
 	}
 
 	cmd := exec.Command("/proc/self/exe", append([]string{"init"}, cmdArgs...)...)

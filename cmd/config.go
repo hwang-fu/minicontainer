@@ -11,6 +11,7 @@ type ContainerConfig struct {
 	AutoRemove  bool     // If true, remove container filesystem on exit
 	Interactive bool     // -i: Keep stdin open for interactive input
 	AllocateTTY bool     // -t: Allocate pseudo-terminal for the container
+	Volumes     []string // Volume mounts in "host:container" or "host:container:ro" format
 }
 
 // ParseRunFlags parses command-line flags for the run command.
@@ -49,6 +50,13 @@ func ParseRunFlags(args []string) (ContainerConfig, []string) {
 			// Can be specified multiple times
 			if i+1 < len(args) {
 				cfg.Env = append(cfg.Env, args[i+1])
+				i += 2
+			}
+
+		case "-v", "--volume":
+			// Volume mount in host:container or host:container:ro format
+			if i+1 < len(args) {
+				cfg.Volumes = append(cfg.Volumes, args[i+1])
 				i += 2
 			}
 
