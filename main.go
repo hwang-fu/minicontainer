@@ -52,6 +52,31 @@ func main() {
 			container.RunWithoutTTY(cfg, cmdArgs)
 		}
 
+	case "stop":
+		if len(os.Args) < 3 {
+			fmt.Fprintln(os.Stderr, "usage: minicontainer stop <container>")
+			os.Exit(1)
+		}
+
+		cs, err := state.FindContainer(os.Args[2])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if cs.Status != state.StatusRunning {
+			fmt.Fprintf(os.Stderr, "container %s is not running\n", cs.Name)
+			os.Exit(1)
+		}
+
+		// Send SIGTERM
+		if err := syscall.Kill(cs.PID, syscall.SIGTERM); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to stop container: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println(container.ShortID(cs.ID))
+
 	case "ps":
 		showAll := len(os.Args) > 2 && (os.Args[2] == "-a" || os.Args[2] == "--all")
 		containers, err := state.ListContainers()
