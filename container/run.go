@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"syscall"
 
@@ -151,6 +152,15 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 	containerState.Status = state.StatusRunning
 	state.SaveState(containerState)
 
+	// Forward signals to container
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		for sig := range sigChan {
+			syscall.Kill(cmd.Process.Pid, sig.(syscall.Signal))
+		}
+	}()
+
 	slave.Close() // Close slave in parent after child starts
 
 	// Relay I/O: PTY master -> stdout (always)
@@ -260,6 +270,15 @@ func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 	containerState.PID = cmd.Process.Pid
 	containerState.Status = state.StatusRunning
 	state.SaveState(containerState)
+
+	// Forward signals to container
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		for sig := range sigChan {
+			syscall.Kill(cmd.Process.Pid, sig.(syscall.Signal))
+		}
+	}()
 
 	cmd.Wait()
 
