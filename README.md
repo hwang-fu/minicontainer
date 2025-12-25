@@ -140,6 +140,7 @@ minicontainer/
 │   └── config.go        # ContainerConfig, ParseRunFlags()
 ├── container/
 │   ├── id.go            # GenerateContainerID(), ShortID()
+│   ├── runtime.go       # ContainerRuntime struct, shared lifecycle logic
 │   └── run.go           # RunWithTTY(), RunWithoutTTY(), RunDetached()
 ├── runtime/
 │   └── pty.go           # OpenPTY(), SetRawMode()
