@@ -17,13 +17,103 @@ import (
 
 // ContainerRuntime holds common runtime state
 type ContainerRuntime struct {
-	ID             string
-	Name           string
-	Config         cmd.ContainerConfig
-	State          *state.ContainerState
-	ActualRootfs   string
-	OverlayCleanup func() error
-	Cmd            *exec.Cmd
+	ID             string                // Full 64-char container ID
+	Name           string                // Display name (user-provided or short ID)
+	Config         cmd.ContainerConfig   // Original config from CLI flags
+	CmdArgs        []string              // Command and arguments to run in container
+	State          *state.ContainerState // Persistent state (saved to disk)
+	ActualRootfs   string                // Path to merged overlayfs (or original rootfs if no overlay)
+	OverlayCleanup func() error          // Cleanup function for overlayfs (nil if no overlay)
+	Cmd            *exec.Cmd             // The exec.Cmd for the container process
+}
+
+// NewContainerRuntime initializes a container: generates ID, creates state, sets up overlay.
+// This is the common setup shared by all run modes.
+// Returns error if any step fails; caller should handle cleanup.
+func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerRuntime, error) {
+	// Prepare rootfs directories before namespace entry (avoids permission issues)
+	if err := prepareRootfs(cfg.RootfsPath); err != nil {
+		return nil, fmt.Errorf("prepare rootfs: %w", err)
+	}
+
+	// Generate unique 64-char hex ID using SHA256 of random bytes
+	containerID, err := GenerateContainerID()
+	if err != nil {
+		return nil, fmt.Errorf("generate container ID: %w", err)
+	}
+
+	// Use provided name or default to short ID (first 12 chars)
+	containerName := cfg.Name
+	if containerName == "" {
+		containerName = ShortID(containerID)
+	}
+
+	// Create initial state with status=created and save to disk
+	containerState := state.NewContainerState(containerID, containerName, cfg.RootfsPath, cmdArgs)
+	if err := state.SaveState(containerState); err != nil {
+		return nil, fmt.Errorf("save state: %w", err)
+	}
+
+	cr := &ContainerRuntime{
+		ID:           containerID,
+		Name:         containerName,
+		Config:       cfg,
+		CmdArgs:      cmdArgs,
+		State:        containerState,
+		ActualRootfs: cfg.RootfsPath,
+	}
+
+	// Setup overlayfs: lower=rootfs (read-only), upper=writable layer, merged=container view
+	if cfg.RootfsPath != "" {
+		overlay, cleanup, err := fs.SetupOverlayfs(cfg.RootfsPath)
+		if err != nil {
+			return nil, fmt.Errorf("setup overlay: %w", err)
+		}
+		cr.OverlayCleanup = cleanup
+		cr.ActualRootfs = overlay.MergedDir
+	}
+
+	// Bind mount volumes into container rootfs (must happen before pivot_root)
+	if len(cfg.Volumes) > 0 && cr.ActualRootfs != "" {
+		if err := fs.MountVolumes(cr.ActualRootfs, cfg.Volumes); err != nil {
+			cr.Cleanup()
+			return nil, fmt.Errorf("mount volumes: %w", err)
+		}
+	}
+
+	return cr, nil
+}
+
+// MarkRunning updates state to running with PID.
+func (cr *ContainerRuntime) MarkRunning() {
+	cr.State.PID = cr.Cmd.Process.Pid
+	cr.State.Status = state.StatusRunning
+	state.SaveState(cr.State)
+}
+
+// MarkStopped updates state to stopped with exit code.
+func (cr *ContainerRuntime) MarkStopped() {
+	cr.State.Status = state.StatusStopped
+	cr.State.ExitCode = getExitCode(cr.Cmd.ProcessState)
+	state.SaveState(cr.State)
+}
+
+// ForwardSignals forwards SIGINT/SIGTERM to container process.
+func (cr *ContainerRuntime) ForwardSignals() {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		for sig := range sigChan {
+			syscall.Kill(cr.Cmd.Process.Pid, sig.(syscall.Signal))
+		}
+	}()
+}
+
+// Cleanup cleans up overlay filesystem.
+func (cr *ContainerRuntime) Cleanup() {
+	if cr.OverlayCleanup != nil {
+		cr.OverlayCleanup()
+	}
 }
 
 // BuildEnv creates environment variables to pass to init process.
