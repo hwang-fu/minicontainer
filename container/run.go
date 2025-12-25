@@ -11,6 +11,7 @@ import (
 	"github.com/hwang-fu/minicontainer/cmd"
 	"github.com/hwang-fu/minicontainer/fs"
 	"github.com/hwang-fu/minicontainer/runtime"
+	"github.com/hwang-fu/minicontainer/state"
 )
 
 // prepareRootfs creates necessary directories inside rootfs before namespace entry.
@@ -59,6 +60,23 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		fmt.Fprintf(os.Stderr, "failed to prepare rootfs: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Generate container ID and create initial state
+	containerID, err := GenerateContainerID()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to generate container ID: %v\n", err)
+		os.Exit(1)
+	}
+	containerName := cfg.Name
+	if containerName == "" {
+		containerName = ShortID(containerID)
+	}
+	containerState := state.NewContainerState(containerID, containerName, cfg.RootfsPath, cmdArgs)
+	if err := state.SaveState(containerState); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to save state: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("%s\n", containerID)
 
 	master, slave, err := runtime.OpenPTY()
 	if err != nil {
@@ -213,4 +231,12 @@ func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 	if overlayCleanup != nil {
 		overlayCleanup()
 	}
+}
+
+// getExitCode extracts the exit code from a process state.
+func getExitCode(processState *os.ProcessState) int {
+	if processState == nil {
+		return -1
+	}
+	return processState.ExitCode()
 }
