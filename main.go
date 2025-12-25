@@ -45,11 +45,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		if cfg.AllocateTTY {
-			// Interactive TTY mode: create PTY and relay I/O
+		if cfg.Detached {
+			container.RunDetached(cfg, cmdArgs)
+		} else if cfg.AllocateTTY {
 			container.RunWithTTY(cfg, cmdArgs)
 		} else {
-			// Non-interactive mode: direct stdin/stdout passthrough
 			container.RunWithoutTTY(cfg, cmdArgs)
 		}
 
