@@ -109,6 +109,7 @@ func ListContainers() ([]*ContainerState, error) {
 		if err != nil {
 			continue // Skip corrupted state files
 		}
+		RefreshState(cs)
 		containers = append(containers, cs)
 	}
 	return containers, nil
@@ -135,10 +136,12 @@ func RefreshState(cs *ContainerState) {
 		return
 	}
 	// Check if process exists by sending signal 0
-	if err := syscall.Kill(cs.PID, 0); err != nil {
-		// Process is dead, update state
+	err := syscall.Kill(cs.PID, 0)
+	if err == syscall.ESRCH {
+		// Process doesn't exist
 		cs.Status = StatusStopped
-		cs.ExitCode = -1 // Unknown exit code
+		cs.ExitCode = -1
 		SaveState(cs)
 	}
+	// EPERM means process exists but we can't signal it - keep as running
 }
