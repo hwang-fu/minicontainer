@@ -10,6 +10,7 @@ import (
 	"github.com/hwang-fu/minicontainer/cmd"
 	"github.com/hwang-fu/minicontainer/container"
 	"github.com/hwang-fu/minicontainer/fs"
+	"github.com/hwang-fu/minicontainer/state"
 
 	"golang.org/x/sys/unix"
 )
@@ -23,18 +24,6 @@ func main() {
 	switch os.Args[1] {
 	case "version":
 		fmt.Println("minicontainer version 0.1.0")
-
-	case "prune":
-		fmt.Println("Cleaning up stale overlay directories...")
-		removed := fs.CleanupStaleOverlays()
-		if len(removed) == 0 {
-			fmt.Println("Nothing to clean.")
-		} else {
-			for _, dir := range removed {
-				fmt.Printf("  Removed: %s\n", dir)
-			}
-			fmt.Printf("Removed %d directories.\n", len(removed))
-		}
 
 	case "run":
 		if len(os.Args) < 3 {
@@ -61,6 +50,39 @@ func main() {
 		} else {
 			// Non-interactive mode: direct stdin/stdout passthrough
 			container.RunWithoutTTY(cfg, cmdArgs)
+		}
+
+	case "ps":
+		showAll := len(os.Args) > 2 && (os.Args[2] == "-a" || os.Args[2] == "--all")
+		containers, err := state.ListContainers()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("%-12s  %-20s  %-10s  %s\n", "CONTAINER ID", "COMMAND", "STATUS", "NAME")
+		for _, c := range containers {
+			if !showAll && c.Status != state.StatusRunning {
+				continue
+			}
+			cmd := strings.Join(c.Command, " ")
+			if len(cmd) > 20 {
+				cmd = cmd[:17] + "..."
+			}
+			fmt.Printf("%-12s  %-20s  %-10s  %s\n",
+				container.ShortID(c.ID), cmd, c.Status, c.Name)
+		}
+
+	case "prune":
+		fmt.Println("Cleaning up stale overlay directories...")
+		removed := fs.CleanupStaleOverlays()
+		if len(removed) == 0 {
+			fmt.Println("Nothing to clean.")
+		} else {
+			for _, dir := range removed {
+				fmt.Printf("  Removed: %s\n", dir)
+			}
+			fmt.Printf("Removed %d directories.\n", len(removed))
 		}
 
 	case "init":
