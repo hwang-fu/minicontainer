@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -110,4 +111,19 @@ func ListContainers() ([]*ContainerState, error) {
 		containers = append(containers, cs)
 	}
 	return containers, nil
+}
+
+// FindContainer finds a container by ID (full or short) or name.
+func FindContainer(idOrName string) (*ContainerState, error) {
+	containers, err := ListContainers()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, c := range containers {
+		if c.ID == idOrName || c.Name == idOrName || strings.HasPrefix(c.ID, idOrName) {
+			return c, nil
+		}
+	}
+	return nil, fmt.Errorf("container not found: %s", idOrName)
 }
