@@ -12,6 +12,7 @@ type ContainerConfig struct {
 	Interactive bool     // -i: Keep stdin open for interactive input
 	AllocateTTY bool     // -t: Allocate pseudo-terminal for the container
 	Volumes     []string // Volume mounts in "host:container" or "host:container:ro" format
+	Detached    bool     // -d: Run container in background
 }
 
 // ParseRunFlags parses command-line flags for the run command.
@@ -59,6 +60,10 @@ func ParseRunFlags(args []string) (ContainerConfig, []string) {
 				cfg.Volumes = append(cfg.Volumes, args[i+1])
 				i += 2
 			}
+
+		case "-d", "--detach":
+			cfg.Detached = true
+			i++
 
 		case "--rm":
 			// Mark container for auto-removal on exit
