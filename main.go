@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/hwang-fu/minicontainer/cmd"
 	"github.com/hwang-fu/minicontainer/container"
@@ -69,11 +70,12 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Send SIGTERM
-		if err := syscall.Kill(cs.PID, syscall.SIGTERM); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to stop container: %v\n", err)
-			os.Exit(1)
-		}
+		// Send SIGTERM first
+		syscall.Kill(cs.PID, syscall.SIGTERM)
+
+		// Wait briefly, then SIGKILL if still running
+		time.Sleep(100 * time.Millisecond)
+		syscall.Kill(cs.PID, syscall.SIGKILL)
 
 		fmt.Println(container.ShortID(cs.ID))
 
