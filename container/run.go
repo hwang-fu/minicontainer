@@ -72,7 +72,7 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		containerName = ShortID(containerID)
 	}
 	containerState := state.NewContainerState(containerID, containerName, cfg.RootfsPath, cmdArgs)
-	if err := state.SaveState(containerState); err != nil {
+	if err = state.SaveState(containerState); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to save state: %v\n", err)
 		os.Exit(1)
 	}
@@ -146,6 +146,11 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
+
+	containerState.PID = cmd.Process.Pid
+	containerState.Status = state.StatusRunning
+	state.SaveState(containerState)
+
 	slave.Close() // Close slave in parent after child starts
 
 	// Relay I/O: PTY master -> stdout (always)
@@ -156,9 +161,15 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 	}
 
 	cmd.Wait()
+
+	containerState.Status = state.StatusStopped
+	containerState.ExitCode = getExitCode(cmd.ProcessState)
+	state.SaveState(containerState)
+
 	if overlayCleanup != nil {
 		overlayCleanup()
 	}
+
 	master.Close() // Stops io.Copy goroutines
 	restoreFunc()  // Restore terminal - must call explicitly before exit
 }
@@ -170,6 +181,23 @@ func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		fmt.Fprintf(os.Stderr, "failed to prepare rootfs: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Generate container ID and create initial state
+	containerID, err := GenerateContainerID()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to generate container ID: %v\n", err)
+		os.Exit(1)
+	}
+	containerName := cfg.Name
+	if containerName == "" {
+		containerName = ShortID(containerID)
+	}
+	containerState := state.NewContainerState(containerID, containerName, cfg.RootfsPath, cmdArgs)
+	if err = state.SaveState(containerState); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to save state: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("%s\n", containerID)
 
 	// Setup overlayfs if rootfs is specified
 	var overlayCleanup func() error
@@ -221,13 +249,24 @@ func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 	cfgWithOverlay.RootfsPath = actualRootfs
 	cmd.Env = BuildEnv(cfgWithOverlay)
 
-	if err := cmd.Run(); err != nil {
+	if err := cmd.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		if overlayCleanup != nil {
 			overlayCleanup()
 		}
 		os.Exit(1)
 	}
+
+	containerState.PID = cmd.Process.Pid
+	containerState.Status = state.StatusRunning
+	state.SaveState(containerState)
+
+	cmd.Wait()
+
+	containerState.Status = state.StatusStopped
+	containerState.ExitCode = getExitCode(cmd.ProcessState)
+	state.SaveState(containerState)
+
 	if overlayCleanup != nil {
 		overlayCleanup()
 	}
