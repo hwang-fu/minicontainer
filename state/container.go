@@ -1,6 +1,11 @@
 package state
 
-import "time"
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"time"
+)
 
 // ContainerStatus represents the lifecycle state of a container.
 type ContainerStatus string
@@ -35,4 +40,23 @@ func StatePath(containerID string) string {
 // ContainerDir returns the directory for a container's data.
 func ContainerDir(containerID string) string {
 	return StateBaseDir + "/" + containerID
+}
+
+// SaveState writes the container state to disk as JSON.
+func SaveState(cs *ContainerState) error {
+	dir := ContainerDir(cs.ID)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create container dir: %w", err)
+	}
+
+	data, err := json.MarshalIndent(cs, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal state: %w", err)
+	}
+
+	path := StatePath(cs.ID)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return fmt.Errorf("write state file: %w", err)
+	}
+	return nil
 }
