@@ -9,12 +9,13 @@ import (
 
 // CleanupStaleOverlays removes orphaned overlay directories from previous runs.
 // Only removes directories where the merged dir is NOT currently mounted.
-// Called at startup before creating new overlays.
-func CleanupStaleOverlays() {
+// Returns the list of removed directories.
+func CleanupStaleOverlays() []string {
+	var removed []string
 	pattern := "/tmp/minicontainer-overlay-*"
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
-		return
+		return removed
 	}
 
 	// Get list of currently mounted paths
@@ -29,8 +30,11 @@ func CleanupStaleOverlays() {
 		}
 
 		// Not mounted - safe to remove orphaned directory
-		os.RemoveAll(dir)
+		if err := os.RemoveAll(dir); err == nil {
+			removed = append(removed, dir)
+		}
 	}
+	return removed
 }
 
 // getMountedPaths reads /proc/mounts and returns a set of mounted paths.

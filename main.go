@@ -26,8 +26,15 @@ func main() {
 
 	case "prune":
 		fmt.Println("Cleaning up stale overlay directories...")
-		fs.CleanupStaleOverlays()
-		fmt.Println("Done.")
+		removed := fs.CleanupStaleOverlays()
+		if len(removed) == 0 {
+			fmt.Println("Nothing to clean.")
+		} else {
+			for _, dir := range removed {
+				fmt.Printf("  Removed: %s\n", dir)
+			}
+			fmt.Printf("Removed %d directories.\n", len(removed))
+		}
 
 	case "run":
 		if len(os.Args) < 3 {
