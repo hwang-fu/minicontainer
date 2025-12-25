@@ -31,3 +31,8 @@ const StateBaseDir = "/var/lib/minicontainer/containers"
 func StatePath(containerID string) string {
 	return StateBaseDir + "/" + containerID + "/state.json"
 }
+
+// ContainerDir returns the directory for a container's data.
+func ContainerDir(containerID string) string {
+	return StateBaseDir + "/" + containerID
+}
