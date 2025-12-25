@@ -60,3 +60,15 @@ func SaveState(cs *ContainerState) error {
 	}
 	return nil
 }
+
+// NewContainerState creates a new state with initial values.
+func NewContainerState(id, name, rootfsPath string, command []string) *ContainerState {
+	return &ContainerState{
+		ID:         id,
+		Name:       name,
+		Command:    command,
+		Status:     StatusCreated,
+		CreatedAt:  time.Now(),
+		RootfsPath: rootfsPath,
+	}
+}
