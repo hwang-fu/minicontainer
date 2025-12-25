@@ -1,82 +1,77 @@
 # MiniContainer
 
-A Linux container runtime written in Go for educational purposes. Implements the core primitives used by Docker and other container systems: namespaces, cgroups, filesystem isolation, and networking.
+[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Linux-FCC624?style=flat&logo=linux&logoColor=black)](https://kernel.org/)
+
+> A minimal Linux container runtime written in Go for educational purposes.
+
+MiniContainer implements the core primitives that power Docker and other container systems: **namespaces**, **cgroups**, **overlayfs**, and **networking** — all from scratch, with minimal dependencies.
+
+---
+
+## Why MiniContainer?
+
+- **Learn by building** — Understand containers at the syscall level
+- **Minimal dependencies** — Only Go stdlib + `golang.org/x/sys/unix`
+- **Clean codebase** — Well-documented, easy to follow
+- **Real isolation** — Not a toy; uses the same primitives as Docker
+
+---
 
 ## Features
 
-**Currently Implemented:**
+| Category | Features |
+|----------|----------|
+| **Namespaces** | UTS, PID, IPC, Mount, User (5 of 6 Linux namespaces) |
+| **Filesystem** | `pivot_root`, overlayfs (COW), volume mounts, `/proc`, `/sys`, `/dev` |
+| **Lifecycle** | Container IDs, state persistence, `ps`, `stop`, `rm` |
+| **Terminal** | PTY allocation (`-it`), signal forwarding |
+| **Modes** | Interactive, non-interactive, detached (`-d`) |
 
-- **Namespace Isolation**
-  - UTS (hostname)
-  - PID (process IDs - container process is PID 1)
-  - IPC (inter-process communication)
-  - Mount (filesystem mounts)
-  - User (UID/GID mapping when running as non-root)
+### CLI Commands
 
-- **Filesystem Isolation**
-  - `pivot_root` for secure root filesystem switching
-  - Overlayfs for copy-on-write (changes don't affect base rootfs)
-  - Volume mounts (`-v host:container[:ro]`)
-  - `/proc` mount (shows only container processes)
-  - `/sys` mount (read-only)
-  - `/dev` with essential devices (null, zero, random, urandom, tty)
+```
+minicontainer run [flags] <command>   Run a container
+minicontainer ps [-a]                 List containers
+minicontainer stop <container>        Stop a running container
+minicontainer rm <container|--all>    Remove stopped containers
+minicontainer prune                   Clean stale overlay directories
+minicontainer version                 Show version
+```
 
-- **Interactive Terminal**
-  - PTY allocation (`-t` flag)
-  - Interactive stdin (`-i` flag)
-  - Full interactive mode (`-it`)
+### Run Flags
 
-- **Container Lifecycle**
-  - Container ID generation (SHA256, 64-char hex)
-  - State persistence (`/var/lib/minicontainer/containers/<id>/state.json`)
-  - Status tracking: created → running → stopped
-  - Signal forwarding (Ctrl+C forwarded to container)
+| Flag | Description |
+|------|-------------|
+| `--rootfs PATH` | Container root filesystem (required) |
+| `--name NAME` | Container name |
+| `--hostname NAME` | Container hostname |
+| `-d` | Detached mode (background) |
+| `-i` | Interactive (keep stdin open) |
+| `-t` | Allocate pseudo-TTY |
+| `-e KEY=VAL` | Set environment variable |
+| `-v HOST:CONTAINER[:ro]` | Bind mount volume |
 
-- **CLI Commands**
-  - `run` - run a container
-  - `ps` - list containers (`-a` for all including stopped)
-  - `stop` - stop a running container (SIGTERM then SIGKILL)
-  - `rm` - remove stopped containers (`--all` to remove all)
-  - `prune` - remove stale overlay directories
-  - `version` - show version
-
-- **CLI Flags (for `run`)**
-  - `--rootfs` - specify container root filesystem (required)
-  - `--hostname` - custom container hostname
-  - `--name` - container name (defaults to short ID)
-  - `-d` - run in detached mode (background)
-  - `-e, --env` - environment variables
-  - `-v, --volume` - bind mount volumes (`host:container` or `host:container:ro`)
-  - `-i` - keep stdin open
-  - `-t` - allocate pseudo-TTY
-  - `--rm` - auto-remove on exit (placeholder)
-
-## Requirements
-
-- Linux (kernel 4.x+ recommended)
-- Go 1.21+
-- Root access (sudo) for container operations
+---
 
 ## Quick Start
 
-### Build
+### 1. Build
 
 ```bash
 make build
 ```
 
-### Get a rootfs
+### 2. Get a rootfs
 
 ```bash
-# Download Alpine Linux minimal rootfs
 wget https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-minirootfs-3.19.0-x86_64.tar.gz
-
-# Extract to test directory
 mkdir -p /tmp/alpine-rootfs
 tar -xzf alpine-minirootfs-3.19.0-x86_64.tar.gz -C /tmp/alpine-rootfs
 ```
 
-### Run a container
+### 3. Run a container
 
 ```bash
 # Interactive shell
@@ -85,37 +80,17 @@ sudo ./minicontainer run -it --rootfs /tmp/alpine-rootfs /bin/sh
 # Run a command
 sudo ./minicontainer run --rootfs /tmp/alpine-rootfs /bin/echo "Hello from container!"
 
-# With custom hostname and environment
-sudo ./minicontainer run -it --rootfs /tmp/alpine-rootfs --hostname mycontainer -e FOO=bar /bin/sh
-
-# Detached mode (background)
+# Detached mode
 sudo ./minicontainer run -d --rootfs /tmp/alpine-rootfs /bin/sleep 60
-```
-
-### Manage containers
-
-```bash
-# List running containers
 sudo ./minicontainer ps
-
-# List all containers (including stopped)
-sudo ./minicontainer ps -a
-
-# Stop a container
-sudo ./minicontainer stop <container-id>
-
-# Remove a stopped container
-sudo ./minicontainer rm <container-id>
-
-# Remove all stopped containers
-sudo ./minicontainer rm --all
+sudo ./minicontainer stop <id>
 ```
 
 ### Inside the container
 
-```bash
+```
 / # hostname
-mycontainer
+minicontainer
 
 / # ps aux
 PID   USER     TIME  COMMAND
@@ -123,63 +98,114 @@ PID   USER     TIME  COMMAND
     7 root      0:00 ps aux
 
 / # ls /dev
-null     random   tty      urandom  zero
-
-/ # echo $FOO
-bar
+null  random  tty  urandom  zero
 
 / # exit
 ```
 
-## Project Structure
+---
+
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph CLI["minicontainer CLI"]
+        run[run]
+        ps[ps]
+        stop[stop]
+        rm[rm]
+        prune[prune]
+        init[init]
+    end
+
+    subgraph Parent["Parent Process (host context)"]
+        P1[Setup overlayfs]
+        P2[Mount volumes]
+        P3[Create state]
+        P4[Signal forwarding]
+        P5[Wait / detach]
+    end
+
+    subgraph Child["Init Process (container context)"]
+        C1[pivot_root]
+        C2[Mount /proc /sys]
+        C3[Setup /dev]
+        C4[Set hostname]
+        C5[exec user command]
+    end
+
+    run -->|"fork + namespaces"| Parent
+    run -->|"re-exec /proc/self/exe init"| Child
+    Parent --> P1 --> P2 --> P3 --> P4 --> P5
+    Child --> C1 --> C2 --> C3 --> C4 --> C5
+```
+
+### Project Structure
 
 ```
 minicontainer/
-├── main.go              # Entry point, command routing, init handler
+├── main.go                 # Entry point, CLI routing, init handler
 ├── cmd/
-│   └── config.go        # ContainerConfig, ParseRunFlags()
+│   └── config.go           # ContainerConfig, flag parsing
 ├── container/
-│   ├── id.go            # GenerateContainerID(), ShortID()
-│   ├── runtime.go       # ContainerRuntime struct, shared lifecycle logic
-│   └── run.go           # RunWithTTY(), RunWithoutTTY(), RunDetached()
+│   ├── id.go               # Container ID generation (SHA256)
+│   ├── runtime.go          # ContainerRuntime (shared lifecycle)
+│   └── run.go              # Run modes (TTY, non-TTY, detached)
 ├── runtime/
-│   └── pty.go           # OpenPTY(), SetRawMode()
+│   └── pty.go              # PTY allocation, raw terminal mode
 ├── fs/
-│   ├── cleanup.go       # CleanupStaleOverlays(), getMountedPaths()
-│   ├── dev.go           # MountDevTmpfs(), CreateDeviceNodes()
-│   ├── overlay.go       # SetupOverlayfs(), mountOverlay()
-│   └── volume.go        # MountVolumes(), ParseVolumeSpec()
+│   ├── cleanup.go          # Stale overlay cleanup
+│   ├── dev.go              # /dev tmpfs and device nodes
+│   ├── overlay.go          # Overlayfs mount/unmount
+│   └── volume.go           # Volume bind mounts
 ├── state/
-│   └── container.go     # ContainerState, SaveState(), LoadState(), ListContainers()
-├── Makefile             # build, test, clean, fmt, vet, check
-└── .claude/             # Project documentation
-    ├── CLAUDE.md        # Development guide
-    ├── project_progress.md
-    └── project_requirements.md
+│   └── container.go        # State persistence (JSON)
+└── Makefile
 ```
+
+---
+
+## Roadmap
+
+- [x] **Phase 1**: Minimal isolation (namespaces, chroot)
+- [x] **Phase 2**: Proper filesystem (pivot_root, overlayfs, volumes)
+- [x] **Phase 3**: Container lifecycle (ps, stop, rm, detached mode)
+- [ ] **Phase 4**: Resource limits (cgroups v2: memory, CPU, pids)
+- [ ] **Phase 5**: Networking (veth, bridge, NAT, port publishing)
+- [ ] **Phase 6**: OCI images (local tarball import)
+- [ ] **Phase 7**: Registry pull (Docker Hub)
+- [ ] **Phase 8**: Polish (logs, exec, inspect)
+
+---
+
+## Requirements
+
+- **Linux** kernel 4.x+ (cgroups v2 recommended)
+- **Go** 1.21+
+- **Root access** (sudo) for container operations
+
+---
 
 ## Development
 
 ```bash
-# Build
-make build
-
-# Run all checks (fmt, vet, build)
-make check
-
-# Run tests (requires root)
-make test
-
-# Clean build artifacts
-make clean
+make build      # Build binary
+make check      # Run fmt, vet, build
+make test       # Run tests (requires root)
+make clean      # Clean build artifacts
 ```
+
+---
 
 ## Author
 
 **Junzhe Wang**
-- junzhe.hwangfu@gmail.com (for code contribution, bug report, and so on)
-- junzhe.wang2002@gmail.com (for potential job offers or co-working opportunities)
+
+- junzhe.hwangfu@gmail.com — bug reports, contributions
+- junzhe.wang2002@gmail.com — job opportunities, collaboration
+
+---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](LICENSE) for details.
