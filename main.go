@@ -82,7 +82,24 @@ func main() {
 	case "rm":
 		if len(os.Args) < 3 {
 			fmt.Fprintln(os.Stderr, "usage: minicontainer rm <container>")
+			fmt.Fprintln(os.Stderr, "       minicontainer rm -a | --all")
 			os.Exit(1)
+		}
+
+		if os.Args[2] == "--all" || os.Args[2] == "-a" {
+			containers, err := state.ListContainers()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			for _, cs := range containers {
+				if cs.Status == state.StatusRunning {
+					continue
+				}
+				os.RemoveAll(state.ContainerDir(cs.ID))
+				fmt.Println(container.ShortID(cs.ID))
+			}
+			return
 		}
 
 		cs, err := state.FindContainer(os.Args[2])
@@ -96,7 +113,6 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Remove container directory (state.json and any other files)
 		if err := os.RemoveAll(state.ContainerDir(cs.ID)); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to remove container: %v\n", err)
 			os.Exit(1)
