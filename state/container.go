@@ -87,3 +87,27 @@ func LoadState(containerID string) (*ContainerState, error) {
 	}
 	return &cs, nil
 }
+
+// ListContainers returns all container states from disk.
+func ListContainers() ([]*ContainerState, error) {
+	entries, err := os.ReadDir(StateBaseDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read state dir: %w", err)
+	}
+
+	var containers []*ContainerState
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		cs, err := LoadState(entry.Name())
+		if err != nil {
+			continue // Skip corrupted state files
+		}
+		containers = append(containers, cs)
+	}
+	return containers, nil
+}
