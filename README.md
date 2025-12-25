@@ -26,19 +26,29 @@ A Linux container runtime written in Go for educational purposes. Implements the
   - Interactive stdin (`-i` flag)
   - Full interactive mode (`-it`)
 
+- **Container Lifecycle**
+  - Container ID generation (SHA256, 64-char hex)
+  - State persistence (`/var/lib/minicontainer/containers/<id>/state.json`)
+  - Status tracking: created → running → stopped
+  - Signal forwarding (Ctrl+C forwarded to container)
+
 - **CLI Commands**
   - `run` - run a container
+  - `ps` - list containers (`-a` for all including stopped)
+  - `stop` - stop a running container (SIGTERM then SIGKILL)
+  - `rm` - remove stopped containers (`--all` to remove all)
   - `prune` - remove stale overlay directories
   - `version` - show version
 
 - **CLI Flags (for `run`)**
   - `--rootfs` - specify container root filesystem (required)
   - `--hostname` - custom container hostname
+  - `--name` - container name (defaults to short ID)
+  - `-d` - run in detached mode (background)
   - `-e, --env` - environment variables
   - `-v, --volume` - bind mount volumes (`host:container` or `host:container:ro`)
   - `-i` - keep stdin open
   - `-t` - allocate pseudo-TTY
-  - `--name` - container name (placeholder)
   - `--rm` - auto-remove on exit (placeholder)
 
 ## Requirements
@@ -77,6 +87,28 @@ sudo ./minicontainer run --rootfs /tmp/alpine-rootfs /bin/echo "Hello from conta
 
 # With custom hostname and environment
 sudo ./minicontainer run -it --rootfs /tmp/alpine-rootfs --hostname mycontainer -e FOO=bar /bin/sh
+
+# Detached mode (background)
+sudo ./minicontainer run -d --rootfs /tmp/alpine-rootfs /bin/sleep 60
+```
+
+### Manage containers
+
+```bash
+# List running containers
+sudo ./minicontainer ps
+
+# List all containers (including stopped)
+sudo ./minicontainer ps -a
+
+# Stop a container
+sudo ./minicontainer stop <container-id>
+
+# Remove a stopped container
+sudo ./minicontainer rm <container-id>
+
+# Remove all stopped containers
+sudo ./minicontainer rm --all
 ```
 
 ### Inside the container
@@ -107,7 +139,8 @@ minicontainer/
 ├── cmd/
 │   └── config.go        # ContainerConfig, ParseRunFlags()
 ├── container/
-│   └── run.go           # RunWithTTY(), RunWithoutTTY()
+│   ├── id.go            # GenerateContainerID(), ShortID()
+│   └── run.go           # RunWithTTY(), RunWithoutTTY(), RunDetached()
 ├── runtime/
 │   └── pty.go           # OpenPTY(), SetRawMode()
 ├── fs/
@@ -115,6 +148,8 @@ minicontainer/
 │   ├── dev.go           # MountDevTmpfs(), CreateDeviceNodes()
 │   ├── overlay.go       # SetupOverlayfs(), mountOverlay()
 │   └── volume.go        # MountVolumes(), ParseVolumeSpec()
+├── state/
+│   └── container.go     # ContainerState, SaveState(), LoadState(), ListContainers()
 ├── Makefile             # build, test, clean, fmt, vet, check
 └── .claude/             # Project documentation
     ├── CLAUDE.md        # Development guide
