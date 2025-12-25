@@ -114,6 +114,31 @@ func NewNamespaceSysProcAttr(setsid bool) *syscall.SysProcAttr {
 	return attr
 }
 
+// BuildCommand creates the exec.Cmd for the container.
+// Uses re-exec pattern: runs /proc/self/exe with "init" subcommand.
+// The init handler (in main.go) then sets up the container environment.
+//
+// The tty parameter affects:
+//   - Setsid flag (needed for TTY to work properly)
+//   - MINICONTAINER_TTY environment variable
+func (cr *ContainerRuntime) BuildCommand(tty bool) *exec.Cmd {
+	// Re-exec ourselves with "init" subcommand - this is the industry standard pattern
+	// used by Docker/runc. The child process will set up namespaces and exec the user command.
+	execCmd := exec.Command("/proc/self/exe", append([]string{"init"}, cr.CmdArgs...)...)
+	execCmd.SysProcAttr = NewNamespaceSysProcAttr(tty)
+
+	// Pass config to init via environment variables, using overlayfs merged path
+	cfgWithOverlay := cr.Config
+	cfgWithOverlay.RootfsPath = cr.ActualRootfs
+	execCmd.Env = BuildEnv(cfgWithOverlay)
+	if tty {
+		execCmd.Env = append(execCmd.Env, "MINICONTAINER_TTY=1")
+	}
+
+	cr.Cmd = execCmd
+	return execCmd
+}
+
 // MarkRunning updates state to running with PID.
 func (cr *ContainerRuntime) MarkRunning() {
 	cr.State.PID = cr.Cmd.Process.Pid
