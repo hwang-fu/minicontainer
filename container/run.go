@@ -15,6 +15,17 @@ import (
 	"github.com/hwang-fu/minicontainer/state"
 )
 
+// ContainerRuntime holds common runtime state
+type ContainerRuntime struct {
+	ID             string
+	Name           string
+	Config         cmd.ContainerConfig
+	State          *state.ContainerState
+	ActualRootfs   string
+	OverlayCleanup func() error
+	Cmd            *exec.Cmd
+}
+
 // BuildEnv creates environment variables to pass to init process.
 func BuildEnv(cfg cmd.ContainerConfig) []string {
 	env := os.Environ()
