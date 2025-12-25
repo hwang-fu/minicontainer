@@ -84,6 +84,36 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 	return cr, nil
 }
 
+// NewNamespaceSysProcAttr creates SysProcAttr with Linux namespace flags.
+// This configures the child process to run in isolated namespaces.
+//
+// Namespaces enabled:
+//   - CLONE_NEWUTS: Own hostname
+//   - CLONE_NEWPID: Own PID namespace (process sees itself as PID 1)
+//   - CLONE_NEWIPC: Own IPC namespace
+//   - CLONE_NEWNS: Own mount namespace
+//   - CLONE_NEWUSER: User namespace (only when running as non-root)
+//
+// The setsid parameter controls whether to create a new session (needed for TTY).
+func NewNamespaceSysProcAttr(setsid bool) *syscall.SysProcAttr {
+	cloneFlags := syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWIPC | syscall.CLONE_NEWNS
+
+	attr := &syscall.SysProcAttr{
+		Cloneflags: uintptr(cloneFlags),
+		Setsid:     setsid,
+	}
+
+	// User namespace is only used when running as non-root.
+	// Maps container root (UID 0) to current host user.
+	if os.Getuid() != 0 {
+		attr.Cloneflags |= syscall.CLONE_NEWUSER
+		attr.UidMappings = []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getuid(), Size: 1}}
+		attr.GidMappings = []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getgid(), Size: 1}}
+	}
+
+	return attr
+}
+
 // MarkRunning updates state to running with PID.
 func (cr *ContainerRuntime) MarkRunning() {
 	cr.State.PID = cr.Cmd.Process.Pid
