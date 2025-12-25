@@ -23,3 +23,6 @@ type ContainerState struct {
 	ExitCode   int             `json:"exit_code"`   // Exit code (valid when stopped)
 	RootfsPath string          `json:"rootfs_path"` // Path to container rootfs
 }
+
+// StateDir returns the base directory for all container state.
+const StateBaseDir = "/var/lib/minicontainer/containers"
