@@ -24,5 +24,10 @@ type ContainerState struct {
 	RootfsPath string          `json:"rootfs_path"` // Path to container rootfs
 }
 
-// StateDir returns the base directory for all container state.
+// StateBaseDir returns the base directory for all container state.
 const StateBaseDir = "/var/lib/minicontainer/containers"
+
+// StatePath returns the path to a container's state.json file.
+func StatePath(containerID string) string {
+	return StateBaseDir + "/" + containerID + "/state.json"
+}
