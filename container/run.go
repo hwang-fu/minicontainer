@@ -76,7 +76,7 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		fmt.Fprintf(os.Stderr, "failed to save state: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("%s\n", containerID)
+	// fmt.Printf("%s\n", containerID)  // Only print in detached mode
 
 	master, slave, err := runtime.OpenPTY()
 	if err != nil {
@@ -197,7 +197,7 @@ func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		fmt.Fprintf(os.Stderr, "failed to save state: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("%s\n", containerID)
+	// fmt.Printf("%s\n", containerID)  // Only print in detached mode
 
 	// Setup overlayfs if rootfs is specified
 	var overlayCleanup func() error
