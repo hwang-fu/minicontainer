@@ -72,3 +72,18 @@ func NewContainerState(id, name, rootfsPath string, command []string) *Container
 		RootfsPath: rootfsPath,
 	}
 }
+
+// LoadState reads a container's state from disk.
+func LoadState(containerID string) (*ContainerState, error) {
+	path := StatePath(containerID)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read state file: %w", err)
+	}
+
+	var cs ContainerState
+	if err := json.Unmarshal(data, &cs); err != nil {
+		return nil, fmt.Errorf("unmarshal state: %w", err)
+	}
+	return &cs, nil
+}
