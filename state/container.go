@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -108,6 +109,7 @@ func ListContainers() ([]*ContainerState, error) {
 		if err != nil {
 			continue // Skip corrupted state files
 		}
+		RefreshState(cs)
 		containers = append(containers, cs)
 	}
 	return containers, nil
@@ -126,4 +128,20 @@ func FindContainer(idOrName string) (*ContainerState, error) {
 		}
 	}
 	return nil, fmt.Errorf("container not found: %s", idOrName)
+}
+
+// RefreshState checks if container process is still alive and updates state if dead.
+func RefreshState(cs *ContainerState) {
+	if cs.Status != StatusRunning {
+		return
+	}
+	// Check if process exists by sending signal 0
+	err := syscall.Kill(cs.PID, 0)
+	if err == syscall.ESRCH {
+		// Process doesn't exist
+		cs.Status = StatusStopped
+		cs.ExitCode = -1
+		SaveState(cs)
+	}
+	// EPERM means process exists but we can't signal it - keep as running
 }

@@ -15,25 +15,6 @@ import (
 	"github.com/hwang-fu/minicontainer/state"
 )
 
-// prepareRootfs creates necessary directories inside rootfs before namespace entry.
-// This must be done in the parent process to avoid permission issues in user namespace.
-func prepareRootfs(rootfsPath string) error {
-	if rootfsPath == "" {
-		return nil
-	}
-	// Create .pivot_root directory for pivot_root syscall
-	if err := os.MkdirAll(filepath.Join(rootfsPath, ".pivot_root"), 0o700); err != nil {
-		return err
-	}
-	// Create mount points for virtual filesystems
-	for _, dir := range []string{"proc", "sys"} {
-		if err := os.MkdirAll(filepath.Join(rootfsPath, dir), 0o755); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // BuildEnv creates environment variables to pass to init process.
 func BuildEnv(cfg cmd.ContainerConfig) []string {
 	env := os.Environ()
@@ -289,6 +270,89 @@ func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 	if overlayCleanup != nil {
 		overlayCleanup()
 	}
+}
+
+// RunDetached runs container in background, returns immediately.
+func RunDetached(cfg cmd.ContainerConfig, cmdArgs []string) {
+	if err := prepareRootfs(cfg.RootfsPath); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to prepare rootfs: %v\n", err)
+		os.Exit(1)
+	}
+
+	containerID, err := GenerateContainerID()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to generate container ID: %v\n", err)
+		os.Exit(1)
+	}
+	containerName := cfg.Name
+	if containerName == "" {
+		containerName = ShortID(containerID)
+	}
+	containerState := state.NewContainerState(containerID, containerName, cfg.RootfsPath, cmdArgs)
+	if err = state.SaveState(containerState); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to save state: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Setup overlayfs
+	var overlayCleanup func() error
+	actualRootfs := cfg.RootfsPath
+	if cfg.RootfsPath != "" {
+		overlay, cleanup, err := fs.SetupOverlayfs(cfg.RootfsPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to setup overlay: %v\n", err)
+			os.Exit(1)
+		}
+		overlayCleanup = cleanup
+		_ = overlayCleanup // Will be cleaned up when container exits
+		actualRootfs = overlay.MergedDir
+	}
+
+	execCmd := exec.Command("/proc/self/exe", append([]string{"init"}, cmdArgs...)...)
+	execCmd.Stdin = nil
+	execCmd.Stdout = nil
+	execCmd.Stderr = nil
+
+	cloneFlags := syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWIPC | syscall.CLONE_NEWNS
+	execCmd.SysProcAttr = &syscall.SysProcAttr{
+		Cloneflags: uintptr(cloneFlags),
+		Setsid:     true,
+	}
+
+	cfgWithOverlay := cfg
+	cfgWithOverlay.RootfsPath = actualRootfs
+	execCmd.Env = BuildEnv(cfgWithOverlay)
+
+	if err := execCmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	containerState.PID = execCmd.Process.Pid
+	containerState.Status = state.StatusRunning
+	state.SaveState(containerState)
+
+	// Detach - don't wait
+	fmt.Println(containerID)
+}
+
+// prepareRootfs creates necessary directories inside rootfs before namespace entry.
+// This must be done in the parent process to avoid permission issues in user namespace.
+func prepareRootfs(rootfsPath string) error {
+	if rootfsPath == "" {
+		return nil
+	}
+	// Create .pivot_root directory for pivot_root syscall
+	if err := os.MkdirAll(filepath.Join(rootfsPath, ".pivot_root"), 0o700); err != nil {
+		return err
+	}
+	// Create mount points for virtual filesystems
+	for _, dir := range []string{"proc", "sys"} {
+		if err := os.MkdirAll(filepath.Join(rootfsPath, dir), 0o755); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // getExitCode extracts the exit code from a process state.
