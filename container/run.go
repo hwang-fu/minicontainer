@@ -47,6 +47,10 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		os.Exit(1)
 	}
 
+	if err := cr.AddToCgroup(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to add to cgroup: %v\n", err)
+	}
+
 	cr.MarkRunning()
 	cr.ForwardSignals()
 	slave.Close() // Close slave in parent after child starts
@@ -63,31 +67,6 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 
 	master.Close()
 	restoreFunc()
-}
-
-// RunDetached runs container in background, returns immediately.
-func RunDetached(cfg cmd.ContainerConfig, cmdArgs []string) {
-	cr, err := NewContainerRuntime(cfg, cmdArgs)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to initialize container: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Build command for detached mode (no stdin/stdout)
-	execCmd := cr.BuildCommand(false)
-	execCmd.Stdin = nil
-	execCmd.Stdout = nil
-	execCmd.Stderr = nil
-
-	if err := execCmd.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-
-	cr.MarkRunning()
-
-	// Print ID and exit - don't wait for container
-	fmt.Println(cr.ID)
 }
 
 // RunWithoutTTY runs container with direct stdin/stdout passthrough.
@@ -112,12 +91,45 @@ func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		os.Exit(1)
 	}
 
+	if err := cr.AddToCgroup(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to add to cgroup: %v\n", err)
+	}
+
 	cr.MarkRunning()
 	cr.ForwardSignals()
 
 	execCmd.Wait()
 	cr.MarkStopped()
 	cr.Cleanup()
+}
+
+// RunDetached runs container in background, returns immediately.
+func RunDetached(cfg cmd.ContainerConfig, cmdArgs []string) {
+	cr, err := NewContainerRuntime(cfg, cmdArgs)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to initialize container: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Build command for detached mode (no stdin/stdout)
+	execCmd := cr.BuildCommand(false)
+	execCmd.Stdin = nil
+	execCmd.Stdout = nil
+	execCmd.Stderr = nil
+
+	if err := execCmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := cr.AddToCgroup(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to add to cgroup: %v\n", err)
+	}
+
+	cr.MarkRunning()
+
+	// Print ID and exit - don't wait for container
+	fmt.Println(cr.ID)
 }
 
 // BuildEnv creates environment variables to pass to init process.

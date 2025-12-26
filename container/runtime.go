@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/hwang-fu/minicontainer/cgroup"
 	"github.com/hwang-fu/minicontainer/cmd"
 	"github.com/hwang-fu/minicontainer/fs"
 	"github.com/hwang-fu/minicontainer/state"
@@ -22,6 +23,7 @@ type ContainerRuntime struct {
 	ActualRootfs   string                // Path to merged overlayfs (or original rootfs if no overlay)
 	OverlayCleanup func() error          // Cleanup function for overlayfs (nil if no overlay)
 	Cmd            *exec.Cmd             // The exec.Cmd for the container process
+	CgroupPath     string                // Path to container's cgroup
 }
 
 // NewContainerRuntime initializes a container: generates ID, creates state, sets up overlay.
@@ -47,7 +49,7 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 
 	// Create initial state with status=created and save to disk
 	containerState := state.NewContainerState(containerID, containerName, cfg.RootfsPath, cmdArgs)
-	if err := state.SaveState(containerState); err != nil {
+	if err = state.SaveState(containerState); err != nil {
 		return nil, fmt.Errorf("save state: %w", err)
 	}
 
@@ -59,6 +61,13 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 		State:        containerState,
 		ActualRootfs: cfg.RootfsPath,
 	}
+
+	// In NewContainerRuntime, after state creation, before overlay setup:
+	cgroupPath, err := cgroup.CreateContainerCgroup(containerID)
+	if err != nil {
+		return nil, fmt.Errorf("create cgroup: %w", err)
+	}
+	cr.CgroupPath = cgroupPath
 
 	// Setup overlayfs: lower=rootfs (read-only), upper=writable layer, merged=container view
 	if cfg.RootfsPath != "" {
@@ -159,6 +168,15 @@ func (cr *ContainerRuntime) ForwardSignals() {
 			syscall.Kill(cr.Cmd.Process.Pid, sig.(syscall.Signal))
 		}
 	}()
+}
+
+// AddToCgroup adds the container process to its cgroup.
+// Must be called after cmd.Start() when we have the PID.
+func (cr *ContainerRuntime) AddToCgroup() error {
+	if cr.CgroupPath == "" {
+		return nil // No cgroup configured
+	}
+	return cgroup.AddProcessToCgroup(cr.CgroupPath, cr.Cmd.Process.Pid)
 }
 
 // Cleanup cleans up overlay filesystem.
