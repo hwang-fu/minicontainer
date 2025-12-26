@@ -54,3 +54,17 @@ func RunInit(args []string) {
 		os.Exit(1)
 	}
 }
+
+// buildContainerEnv builds the environment for the container process.
+func buildContainerEnv() []string {
+	env := []string{
+		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"TERM=xterm",
+	}
+	for _, e := range os.Environ() {
+		if strings.HasPrefix(e, "MINICONTAINER_ENV_") {
+			env = append(env, strings.TrimPrefix(e, "MINICONTAINER_ENV_"))
+		}
+	}
+	return env
+}
