@@ -62,6 +62,13 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		fmt.Fprintf(os.Stderr, "warning: failed to setup network: %v\n", err)
 	}
 
+	// Setup port forwarding
+	for _, mapping := range cr.Config.PortMappings {
+		if err := network.SetupPortForward(cr.ContainerIP, mapping); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to setup port forward: %v\n", err)
+		}
+	}
+
 	cr.MarkRunning()
 	cr.ForwardSignals()
 	slave.Close() // Close slave in parent after child starts
@@ -116,6 +123,13 @@ func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		fmt.Fprintf(os.Stderr, "warning: failed to setup network: %v\n", err)
 	}
 
+	// Setup port forwarding
+	for _, mapping := range cr.Config.PortMappings {
+		if err := network.SetupPortForward(cr.ContainerIP, mapping); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to setup port forward: %v\n", err)
+		}
+	}
+
 	cr.MarkRunning()
 	cr.ForwardSignals()
 
@@ -155,6 +169,13 @@ func RunDetached(cfg cmd.ContainerConfig, cmdArgs []string) {
 	// Setup container network (rename veth, assign IP, routes)
 	if err := network.SetupContainerNetwork(cr.Cmd.Process.Pid, cr.VethContainer, cr.ContainerIP); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: failed to setup network: %v\n", err)
+	}
+
+	// Setup port forwarding
+	for _, mapping := range cr.Config.PortMappings {
+		if err := network.SetupPortForward(cr.ContainerIP, mapping); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to setup port forward: %v\n", err)
+		}
 	}
 
 	cr.MarkRunning()
