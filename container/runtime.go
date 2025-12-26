@@ -105,7 +105,11 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 //
 // The setsid parameter controls whether to create a new session (needed for TTY).
 func NewNamespaceSysProcAttr(setsid bool) *syscall.SysProcAttr {
-	cloneFlags := syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWIPC | syscall.CLONE_NEWNS
+	cloneFlags := syscall.CLONE_NEWUTS |
+		syscall.CLONE_NEWPID |
+		syscall.CLONE_NEWIPC |
+		syscall.CLONE_NEWNS |
+		syscall.CLONE_NEWNET
 
 	attr := &syscall.SysProcAttr{
 		Cloneflags: uintptr(cloneFlags),
