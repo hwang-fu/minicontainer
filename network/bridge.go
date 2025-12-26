@@ -9,7 +9,7 @@ import (
 
 const (
 	BridgeName = "minicontainer0"
-	BridgeCIDR = "172.17.0.1/16"
+	BridgeCIDR = "172.18.0.1/16"
 )
 
 // EnsureBridge creates the minicontainer0 bridge if it doesn't exist.
@@ -23,6 +23,11 @@ func EnsureBridge() error {
 	// Create bridge using ip command
 	if err := run("ip", "link", "add", BridgeName, "type", "bridge"); err != nil {
 		return fmt.Errorf("create bridge: %w", err)
+	}
+
+	// Setup NAT for outbound connectivity
+	if err := SetupNAT(); err != nil {
+		return fmt.Errorf("setup NAT: %w", err)
 	}
 
 	// Assign IP address

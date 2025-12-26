@@ -27,6 +27,7 @@ type ContainerRuntime struct {
 	CgroupPath     string                // Path to container's cgroup
 	VethHost       string                // Host-side veth interface name
 	VethContainer  string                // Container-side veth interface name (before move)
+	ContainerIP    string                // Container's allocated IP address
 }
 
 // NewContainerRuntime initializes a container: generates ID, creates state, sets up overlay.
@@ -76,6 +77,13 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 	}
 	cr.VethHost = hostVeth
 	cr.VethContainer = containerVeth
+
+	// Allocate IP for container
+	containerIP, err := network.AllocateIP()
+	if err != nil {
+		return nil, fmt.Errorf("allocate IP: %w", err)
+	}
+	cr.ContainerIP = containerIP
 
 	// Cgroup creation
 	cgroupPath, err := cgroup.CreateContainerCgroup(containerID)
