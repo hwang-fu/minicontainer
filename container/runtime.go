@@ -66,9 +66,16 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 	}
 
 	// Ensure bridge exists for container networking
-	if err := network.EnsureBridge(); err != nil {
+	if err = network.EnsureBridge(); err != nil {
 		return nil, fmt.Errorf("ensure bridge: %w", err)
 	}
+	// Create veth pair for container networking
+	hostVeth, containerVeth, err := network.CreateVethPair(containerID)
+	if err != nil {
+		return nil, fmt.Errorf("create veth: %w", err)
+	}
+	cr.VethHost = hostVeth
+	cr.VethContainer = containerVeth
 
 	// Cgroup creation
 	cgroupPath, err := cgroup.CreateContainerCgroup(containerID)

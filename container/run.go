@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/hwang-fu/minicontainer/cmd"
+	"github.com/hwang-fu/minicontainer/network"
 	"github.com/hwang-fu/minicontainer/runtime"
 )
 
@@ -49,6 +50,11 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 
 	if err := cr.AddToCgroup(); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: failed to add to cgroup: %v\n", err)
+	}
+
+	// Move veth into container's network namespace
+	if err := network.MoveVethToNetns(cr.VethContainer, cr.Cmd.Process.Pid); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to move veth: %v\n", err)
 	}
 
 	cr.MarkRunning()
@@ -95,6 +101,11 @@ func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 		fmt.Fprintf(os.Stderr, "warning: failed to add to cgroup: %v\n", err)
 	}
 
+	// Move veth into container's network namespace
+	if err := network.MoveVethToNetns(cr.VethContainer, cr.Cmd.Process.Pid); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to move veth: %v\n", err)
+	}
+
 	cr.MarkRunning()
 	cr.ForwardSignals()
 
@@ -124,6 +135,11 @@ func RunDetached(cfg cmd.ContainerConfig, cmdArgs []string) {
 
 	if err := cr.AddToCgroup(); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: failed to add to cgroup: %v\n", err)
+	}
+
+	// Move veth into container's network namespace
+	if err := network.MoveVethToNetns(cr.VethContainer, cr.Cmd.Process.Pid); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to move veth: %v\n", err)
 	}
 
 	cr.MarkRunning()
