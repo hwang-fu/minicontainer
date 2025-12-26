@@ -15,6 +15,7 @@ type ContainerConfig struct {
 	Detached    bool     // -d: Run container in background
 	MemoryLimit string   // Memory limit (e.g., "256m", "1g")
 	CPULimit    string   // CPU limit (e.g., "0.5", "2")
+	PidsLimit   int      // Max number of processes (--pids-limit)
 }
 
 // ParseRunFlags parses command-line flags for the run command.
