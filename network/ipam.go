@@ -27,3 +27,10 @@ func AllocateIP() (string, error) {
 	}
 	return "", fmt.Errorf("no available IPs")
 }
+
+// ReleaseIP marks an IP as available.
+func ReleaseIP(ip string) {
+	ipamMutex.Lock()
+	defer ipamMutex.Unlock()
+	delete(allocatedIPs, ip)
+}
