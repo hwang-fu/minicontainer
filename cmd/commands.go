@@ -50,3 +50,21 @@ func RunRm(idOrName string) {
 
 	fmt.Println(state.ShortID(cs.ID))
 }
+
+// RunRmAll removes all stopped containers.
+func RunRmAll() {
+	containers, err := state.ListContainers()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	for _, cs := range containers {
+		if cs.Status == state.StatusRunning {
+			continue
+		}
+		cgroup.RemoveContainerCgroup(cs.ID)
+		os.RemoveAll(state.ContainerDir(cs.ID))
+		fmt.Println(state.ShortID(cs.ID))
+	}
+}
