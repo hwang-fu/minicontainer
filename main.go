@@ -293,10 +293,13 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Println("Usage: ./minicontainer <command> [options]")
-	fmt.Println("")
+	fmt.Println("Usage: minicontainer <command> [options]")
+	fmt.Println()
 	fmt.Println("Commands:")
 	fmt.Println("  run      Run a container")
+	fmt.Println("  stop     Stop a running container")
+	fmt.Println("  rm       Remove a stopped container")
+	fmt.Println("  ps       List containers")
 	fmt.Println("  prune    Remove stale overlay directories")
 	fmt.Println("  version  Show version")
 }
