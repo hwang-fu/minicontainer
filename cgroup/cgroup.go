@@ -124,3 +124,13 @@ func SetPidsLimit(cgroupPath string, limit int) error {
 	}
 	return nil
 }
+
+// RemoveContainerCgroup removes the cgroup directory for a container.
+// The cgroup must be empty (no processes) before removal.
+func RemoveContainerCgroup(containerID string) error {
+	cgroupPath := ContainerCgroupPath(containerID)
+	if err := os.Remove(cgroupPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove cgroup: %w", err)
+	}
+	return nil
+}
