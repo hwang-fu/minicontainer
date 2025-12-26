@@ -10,6 +10,7 @@ import (
 	"github.com/hwang-fu/minicontainer/cgroup"
 	"github.com/hwang-fu/minicontainer/cmd"
 	"github.com/hwang-fu/minicontainer/fs"
+	"github.com/hwang-fu/minicontainer/network"
 	"github.com/hwang-fu/minicontainer/state"
 )
 
@@ -60,6 +61,11 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 		CmdArgs:      cmdArgs,
 		State:        containerState,
 		ActualRootfs: cfg.RootfsPath,
+	}
+
+	// Ensure bridge exists for container networking
+	if err := network.EnsureBridge(); err != nil {
+		return nil, fmt.Errorf("ensure bridge: %w", err)
 	}
 
 	// Cgroup creation
