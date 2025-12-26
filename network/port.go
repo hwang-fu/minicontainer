@@ -1,6 +1,9 @@
 package network
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // SetupPortForward creates iptables DNAT rule for port forwarding.
 // mapping format: "hostPort:containerPort"
