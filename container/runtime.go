@@ -170,6 +170,15 @@ func (cr *ContainerRuntime) ForwardSignals() {
 	}()
 }
 
+// AddToCgroup adds the container process to its cgroup.
+// Must be called after cmd.Start() when we have the PID.
+func (cr *ContainerRuntime) AddToCgroup() error {
+	if cr.CgroupPath == "" {
+		return nil // No cgroup configured
+	}
+	return cgroup.AddProcessToCgroup(cr.CgroupPath, cr.Cmd.Process.Pid)
+}
+
 // Cleanup cleans up overlay filesystem.
 func (cr *ContainerRuntime) Cleanup() {
 	if cr.OverlayCleanup != nil {

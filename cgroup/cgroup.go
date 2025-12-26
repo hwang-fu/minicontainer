@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 // CgroupBasePath is the root cgroup directory for all minicontainer cgroups.
@@ -54,7 +55,7 @@ func CreateContainerCgroup(containerID string) (string, error) {
 // This adds the process (and its children) to the cgroup.
 func AddProcessToCgroup(cgroupPath string, pid int) error {
 	procsPath := filepath.Join(cgroupPath, "cgroup.procs")
-	if err := os.WriteFile(procsPath, []byte(fmt.Sprintf("%d", pid)), 0o644); err != nil {
+	if err := os.WriteFile(procsPath, strconv.AppendInt(nil, int64(pid), 10), 0o644); err != nil {
 		return fmt.Errorf("add process to cgroup: %w", err)
 	}
 	return nil
