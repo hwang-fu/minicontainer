@@ -27,6 +27,7 @@ type ContainerRuntime struct {
 	CgroupPath     string                // Path to container's cgroup
 	VethHost       string                // Host-side veth interface name
 	VethContainer  string                // Container-side veth interface name (before move)
+	ContainerIP    string                // Container's allocated IP address
 }
 
 // NewContainerRuntime initializes a container: generates ID, creates state, sets up overlay.
