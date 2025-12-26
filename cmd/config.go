@@ -1,5 +1,7 @@
 package cmd
 
+import "strconv"
+
 // ContainerConfig holds the configuration options for a container.
 // These are parsed from CLI flags in the run command and passed
 // to the init process via environment variables.
@@ -58,6 +60,12 @@ func ParseRunFlags(args []string) (ContainerConfig, []string) {
 		case "--cpus":
 			if i+1 < len(args) {
 				cfg.CPULimit = args[i+1]
+				i += 2
+			}
+
+		case "--pids-limit":
+			if i+1 < len(args) {
+				cfg.PidsLimit, _ = strconv.Atoi(args[i+1])
 				i += 2
 			}
 
