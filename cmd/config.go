@@ -89,6 +89,12 @@ func ParseRunFlags(args []string) (ContainerConfig, []string) {
 			cfg.Detached = true
 			i++
 
+		case "-p", "--publish":
+			if i+1 < len(args) {
+				cfg.PortMappings = append(cfg.PortMappings, args[i+1])
+				i += 2
+			}
+
 		case "--rm":
 			// Mark container for auto-removal on exit
 			cfg.AutoRemove = true
