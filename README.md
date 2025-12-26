@@ -23,8 +23,9 @@ MiniContainer implements the core primitives that power Docker and other contain
 
 | Category | Features |
 |----------|----------|
-| **Namespaces** | UTS, PID, IPC, Mount, User (5 of 6 Linux namespaces) |
+| **Namespaces** | UTS, PID, IPC, Mount, User, Network (all 6 Linux namespaces) |
 | **Filesystem** | `pivot_root`, overlayfs (COW), volume mounts, `/proc`, `/sys`, `/dev` |
+| **Networking** | Bridge (`minicontainer0`), veth pairs, IPAM, NAT for internet access |
 | **Resource Limits** | Cgroups v2: memory (`--memory`), CPU (`--cpus`), pids (`--pids-limit`) |
 | **Lifecycle** | Container IDs, state persistence, `ps`, `stop`, `rm` |
 | **Terminal** | PTY allocation (`-it`), signal forwarding |
@@ -108,6 +109,15 @@ PID   USER     TIME  COMMAND
 / # ls /dev
 null  random  tty  urandom  zero
 
+/ # ip addr show eth0
+26: eth0@if27: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
+    inet 172.18.0.2/16 scope global eth0
+
+/ # ping -c 2 8.8.8.8
+PING 8.8.8.8 (8.8.8.8): 56 data bytes
+64 bytes from 8.8.8.8: seq=0 ttl=113 time=35.1 ms
+64 bytes from 8.8.8.8: seq=1 ttl=113 time=34.2 ms
+
 / # exit
 ```
 
@@ -129,11 +139,13 @@ flowchart TB
     subgraph Parent["Parent Process (host context)"]
         P1[Setup overlayfs]
         P2[Mount volumes]
-        P3[Create cgroup]
-        P4[Create state]
-        P5[Add to cgroup]
-        P6[Signal forwarding]
-        P7[Wait / detach]
+        P3[Create bridge/veth]
+        P4[Create cgroup]
+        P5[Create state]
+        P6[Move veth to netns]
+        P7[Setup container IP]
+        P8[Signal forwarding]
+        P9[Wait / detach]
     end
 
     subgraph Child["Init Process (container context)"]
@@ -146,7 +158,7 @@ flowchart TB
 
     run -->|"fork + namespaces"| Parent
     run -->|"re-exec /proc/self/exe init"| Child
-    Parent --> P1 --> P2 --> P3 --> P4 --> P5 --> P6 --> P7
+    Parent --> P1 --> P2 --> P3 --> P4 --> P5 --> P6 --> P7 --> P8 --> P9
     Child --> C1 --> C2 --> C3 --> C4 --> C5
 ```
 
@@ -165,6 +177,12 @@ minicontainer/
 │   └── run.go              # Run modes (TTY, non-TTY, detached)
 ├── cgroup/
 │   └── cgroup.go           # Cgroups v2 resource limits
+├── network/
+│   ├── bridge.go           # Bridge creation (minicontainer0)
+│   ├── veth.go             # Veth pair creation and management
+│   ├── ipam.go             # IP address allocation
+│   ├── setup.go            # Container network configuration
+│   └── nat.go              # NAT/masquerade for internet access
 ├── runtime/
 │   └── pty.go              # PTY allocation, raw terminal mode
 ├── fs/
@@ -185,7 +203,7 @@ minicontainer/
 - [x] **Phase 2**: Proper filesystem (pivot_root, overlayfs, volumes)
 - [x] **Phase 3**: Container lifecycle (ps, stop, rm, detached mode)
 - [x] **Phase 4**: Resource limits (cgroups v2: memory, CPU, pids)
-- [ ] **Phase 5**: Networking (veth, bridge, NAT, port publishing)
+- [x] **Phase 5**: Networking (veth, bridge, NAT) — port publishing pending
 - [ ] **Phase 6**: OCI images (local tarball import)
 - [ ] **Phase 7**: Registry pull (Docker Hub)
 - [ ] **Phase 8**: Polish (logs, exec, inspect)
