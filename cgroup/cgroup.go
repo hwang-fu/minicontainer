@@ -100,3 +100,18 @@ func ParseMemoryLimit(limit string) (int64, error) {
 		return strconv.ParseInt(limit, 10, 64)
 	}
 }
+
+// SetCPULimit writes the CPU limit to the cgroup.
+// cpus is the number of CPUs (e.g., 0.5 = 50% of one CPU, 2 = two CPUs).
+// Uses 100000µs (100ms) as the period.
+func SetCPULimit(cgroupPath string, cpus float64) error {
+	const period = 100000 // 100ms in microseconds
+	quota := int64(cpus * float64(period))
+
+	cpuMaxPath := filepath.Join(cgroupPath, "cpu.max")
+	value := fmt.Appendf(nil, "%d %d", quota, period)
+	if err := os.WriteFile(cpuMaxPath, value, 0o644); err != nil {
+		return fmt.Errorf("set cpu limit: %w", err)
+	}
+	return nil
+}
