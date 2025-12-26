@@ -13,6 +13,7 @@ type ContainerConfig struct {
 	AllocateTTY bool     // -t: Allocate pseudo-terminal for the container
 	Volumes     []string // Volume mounts in "host:container" or "host:container:ro" format
 	Detached    bool     // -d: Run container in background
+	MemoryLimit string   // Memory limit (e.g., "256m", "1g")
 }
 
 // ParseRunFlags parses command-line flags for the run command.
