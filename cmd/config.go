@@ -6,18 +6,19 @@ import "strconv"
 // These are parsed from CLI flags in the run command and passed
 // to the init process via environment variables.
 type ContainerConfig struct {
-	RootfsPath  string   // Path to container's root filesystem
-	Hostname    string   // Custom hostname for the container
-	Name        string   // Container name (for identification in ps, stop, etc.)
-	Env         []string // User-specified environment variables (KEY=VALUE format)
-	AutoRemove  bool     // If true, remove container filesystem on exit
-	Interactive bool     // -i: Keep stdin open for interactive input
-	AllocateTTY bool     // -t: Allocate pseudo-terminal for the container
-	Volumes     []string // Volume mounts in "host:container" or "host:container:ro" format
-	Detached    bool     // -d: Run container in background
-	MemoryLimit string   // Memory limit (e.g., "256m", "1g")
-	CPULimit    string   // CPU limit (e.g., "0.5", "2")
-	PidsLimit   int      // Max number of processes (--pids-limit)
+	RootfsPath   string   // Path to container's root filesystem
+	Hostname     string   // Custom hostname for the container
+	Name         string   // Container name (for identification in ps, stop, etc.)
+	Env          []string // User-specified environment variables (KEY=VALUE format)
+	AutoRemove   bool     // If true, remove container filesystem on exit
+	Interactive  bool     // -i: Keep stdin open for interactive input
+	AllocateTTY  bool     // -t: Allocate pseudo-terminal for the container
+	Volumes      []string // Volume mounts in "host:container" or "host:container:ro" format
+	Detached     bool     // -d: Run container in background
+	MemoryLimit  string   // Memory limit (e.g., "256m", "1g")
+	CPULimit     string   // CPU limit (e.g., "0.5", "2")
+	PidsLimit    int      // Max number of processes (--pids-limit)
+	PortMappings []string // Port mappings in "hostPort:containerPort" format
 }
 
 // ParseRunFlags parses command-line flags for the run command.
