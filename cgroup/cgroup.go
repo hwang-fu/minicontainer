@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 // CgroupBasePath is the root cgroup directory for all minicontainer cgroups.
@@ -59,4 +60,43 @@ func AddProcessToCgroup(cgroupPath string, pid int) error {
 		return fmt.Errorf("add process to cgroup: %w", err)
 	}
 	return nil
+}
+
+// SetMemoryLimit writes the memory limit to the cgroup.
+// limitBytes is the memory limit in bytes.
+func SetMemoryLimit(cgroupPath string, limitBytes int64) error {
+	memoryMaxPath := filepath.Join(cgroupPath, "memory.max")
+	if err := os.WriteFile(memoryMaxPath, []byte(strconv.FormatInt(limitBytes, 10)), 0o644); err != nil {
+		return fmt.Errorf("set memory limit: %w", err)
+	}
+	return nil
+}
+
+// ParseMemoryLimit converts human-readable memory string to bytes.
+// Supports: k/K (kilobytes), m/M (megabytes), g/G (gigabytes)
+// Examples: "256m" -> 268435456, "1g" -> 1073741824
+func ParseMemoryLimit(limit string) (int64, error) {
+	if limit == "" {
+		return 0, nil
+	}
+
+	limit = strings.TrimSpace(limit)
+	unit := strings.ToLower(limit[len(limit)-1:])
+	valueStr := limit[:len(limit)-1]
+	value, err := strconv.ParseInt(valueStr, 10, 64)
+	if err != nil {
+		// No unit suffix, try parsing whole string as bytes
+		return strconv.ParseInt(limit, 10, 64)
+	}
+
+	switch unit {
+	case "k":
+		return value * 1024, nil
+	case "m":
+		return value * 1024 * 1024, nil
+	case "g":
+		return value * 1024 * 1024 * 1024, nil
+	default:
+		return strconv.ParseInt(limit, 10, 64)
+	}
 }

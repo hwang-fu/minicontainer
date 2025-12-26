@@ -62,12 +62,23 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 		ActualRootfs: cfg.RootfsPath,
 	}
 
-	// In NewContainerRuntime, after state creation, before overlay setup:
+	// Cgroup creation
 	cgroupPath, err := cgroup.CreateContainerCgroup(containerID)
 	if err != nil {
 		return nil, fmt.Errorf("create cgroup: %w", err)
 	}
 	cr.CgroupPath = cgroupPath
+
+	// Apply memory limit if specified
+	if cfg.MemoryLimit != "" {
+		limitBytes, err := cgroup.ParseMemoryLimit(cfg.MemoryLimit)
+		if err != nil {
+			return nil, fmt.Errorf("parse memory limit: %w", err)
+		}
+		if err := cgroup.SetMemoryLimit(cgroupPath, limitBytes); err != nil {
+			return nil, fmt.Errorf("set memory limit: %w", err)
+		}
+	}
 
 	// Setup overlayfs: lower=rootfs (read-only), upper=writable layer, merged=container view
 	if cfg.RootfsPath != "" {
