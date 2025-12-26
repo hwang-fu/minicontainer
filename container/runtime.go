@@ -92,6 +92,13 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 		}
 	}
 
+	// Apply pids limit if specified
+	if cfg.PidsLimit > 0 {
+		if err := cgroup.SetPidsLimit(cgroupPath, cfg.PidsLimit); err != nil {
+			return nil, fmt.Errorf("set pids limit: %w", err)
+		}
+	}
+
 	// Setup overlayfs: lower=rootfs (read-only), upper=writable layer, merged=container view
 	if cfg.RootfsPath != "" {
 		overlay, cleanup, err := fs.SetupOverlayfs(cfg.RootfsPath)

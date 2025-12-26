@@ -1,5 +1,7 @@
 package cmd
 
+import "strconv"
+
 // ContainerConfig holds the configuration options for a container.
 // These are parsed from CLI flags in the run command and passed
 // to the init process via environment variables.
@@ -15,6 +17,7 @@ type ContainerConfig struct {
 	Detached    bool     // -d: Run container in background
 	MemoryLimit string   // Memory limit (e.g., "256m", "1g")
 	CPULimit    string   // CPU limit (e.g., "0.5", "2")
+	PidsLimit   int      // Max number of processes (--pids-limit)
 }
 
 // ParseRunFlags parses command-line flags for the run command.
@@ -57,6 +60,12 @@ func ParseRunFlags(args []string) (ContainerConfig, []string) {
 		case "--cpus":
 			if i+1 < len(args) {
 				cfg.CPULimit = args[i+1]
+				i += 2
+			}
+
+		case "--pids-limit":
+			if i+1 < len(args) {
+				cfg.PidsLimit, _ = strconv.Atoi(args[i+1])
 				i += 2
 			}
 

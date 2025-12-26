@@ -115,3 +115,12 @@ func SetCPULimit(cgroupPath string, cpus float64) error {
 	}
 	return nil
 }
+
+// SetPidsLimit writes the process limit to the cgroup.
+func SetPidsLimit(cgroupPath string, limit int) error {
+	pidsMaxPath := filepath.Join(cgroupPath, "pids.max")
+	if err := os.WriteFile(pidsMaxPath, strconv.AppendInt(nil, int64(limit), 10), 0o644); err != nil {
+		return fmt.Errorf("set pids limit: %w", err)
+	}
+	return nil
+}
