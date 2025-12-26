@@ -25,7 +25,7 @@ MiniContainer implements the core primitives that power Docker and other contain
 |----------|----------|
 | **Namespaces** | UTS, PID, IPC, Mount, User, Network (all 6 Linux namespaces) |
 | **Filesystem** | `pivot_root`, overlayfs (COW), volume mounts, `/proc`, `/sys`, `/dev` |
-| **Networking** | Bridge (`minicontainer0`), veth pairs, IPAM, NAT for internet access |
+| **Networking** | Bridge (`minicontainer0`), veth pairs, IPAM, NAT, port publishing (`-p`) |
 | **Resource Limits** | Cgroups v2: memory (`--memory`), CPU (`--cpus`), pids (`--pids-limit`) |
 | **Lifecycle** | Container IDs, state persistence, `ps`, `stop`, `rm` |
 | **Terminal** | PTY allocation (`-it`), signal forwarding |
@@ -57,6 +57,7 @@ minicontainer version                 Show version
 | `--memory SIZE` | Memory limit (e.g., `256m`, `1g`) |
 | `--cpus N` | CPU limit (e.g., `0.5`, `2`) |
 | `--pids-limit N` | Max number of processes |
+| `-p HOST:CONTAINER` | Publish container port to host |
 
 ---
 
@@ -182,7 +183,8 @@ minicontainer/
 │   ├── veth.go             # Veth pair creation and management
 │   ├── ipam.go             # IP address allocation
 │   ├── setup.go            # Container network configuration
-│   └── nat.go              # NAT/masquerade for internet access
+│   ├── nat.go              # NAT/masquerade for internet access
+│   └── port.go             # Port publishing (iptables DNAT)
 ├── runtime/
 │   └── pty.go              # PTY allocation, raw terminal mode
 ├── fs/
@@ -203,7 +205,7 @@ minicontainer/
 - [x] **Phase 2**: Proper filesystem (pivot_root, overlayfs, volumes)
 - [x] **Phase 3**: Container lifecycle (ps, stop, rm, detached mode)
 - [x] **Phase 4**: Resource limits (cgroups v2: memory, CPU, pids)
-- [x] **Phase 5**: Networking (veth, bridge, NAT) — port publishing pending
+- [x] **Phase 5**: Networking (veth, bridge, NAT, port publishing)
 - [ ] **Phase 6**: OCI images (local tarball import)
 - [ ] **Phase 7**: Registry pull (Docker Hub)
 - [ ] **Phase 8**: Polish (logs, exec, inspect)
