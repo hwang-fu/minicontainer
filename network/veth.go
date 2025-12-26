@@ -28,3 +28,12 @@ func CreateVethPair(containerID string) (hostVeth string, containerVeth string, 
 
 	return hostVeth, containerVeth, nil
 }
+
+// MoveVethToNetns moves the container-side veth into a network namespace.
+// pid is the container's init process PID.
+func MoveVethToNetns(containerVeth string, pid int) error {
+	if err := run("ip", "link", "set", containerVeth, "netns", fmt.Sprintf("%d", pid)); err != nil {
+		return fmt.Errorf("move veth to netns: %w", err)
+	}
+	return nil
+}
