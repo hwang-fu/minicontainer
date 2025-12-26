@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hwang-fu/minicontainer/cgroup"
 	"github.com/hwang-fu/minicontainer/cmd"
 	"github.com/hwang-fu/minicontainer/container"
 	"github.com/hwang-fu/minicontainer/fs"
@@ -96,6 +97,7 @@ func main() {
 				if cs.Status == state.StatusRunning {
 					continue
 				}
+				cgroup.RemoveContainerCgroup(cs.ID)
 				os.RemoveAll(state.ContainerDir(cs.ID))
 				fmt.Println(container.ShortID(cs.ID))
 			}
@@ -112,6 +114,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "cannot remove running container %s, stop it first\n", cs.Name)
 			os.Exit(1)
 		}
+
+		// Clean up cgroup
+		cgroup.RemoveContainerCgroup(cs.ID)
 
 		if err := os.RemoveAll(state.ContainerDir(cs.ID)); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to remove container: %v\n", err)
