@@ -25,6 +25,8 @@ type ContainerRuntime struct {
 	OverlayCleanup func() error          // Cleanup function for overlayfs (nil if no overlay)
 	Cmd            *exec.Cmd             // The exec.Cmd for the container process
 	CgroupPath     string                // Path to container's cgroup
+	VethHost       string                // Host-side veth interface name
+	VethContainer  string                // Container-side veth interface name (before move)
 }
 
 // NewContainerRuntime initializes a container: generates ID, creates state, sets up overlay.
@@ -64,9 +66,16 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 	}
 
 	// Ensure bridge exists for container networking
-	if err := network.EnsureBridge(); err != nil {
+	if err = network.EnsureBridge(); err != nil {
 		return nil, fmt.Errorf("ensure bridge: %w", err)
 	}
+	// Create veth pair for container networking
+	hostVeth, containerVeth, err := network.CreateVethPair(containerID)
+	if err != nil {
+		return nil, fmt.Errorf("create veth: %w", err)
+	}
+	cr.VethHost = hostVeth
+	cr.VethContainer = containerVeth
 
 	// Cgroup creation
 	cgroupPath, err := cgroup.CreateContainerCgroup(containerID)
