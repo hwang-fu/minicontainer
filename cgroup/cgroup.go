@@ -33,6 +33,19 @@ func EnsureParentCgroup() error {
 	return nil
 }
 
+// CreateContainerCgroup creates a cgroup directory for a specific container.
+// Returns the path to the created cgroup directory.
 func CreateContainerCgroup(containerID string) (string, error) {
-	panic("todo")
+	// Ensure parent exists and has controllers enabled
+	if err := EnsureParentCgroup(); err != nil {
+		return "", nil
+	}
+
+	// Create container-specific cgroup directory
+	cgroupPath := ContainerCgroupPath(containerID)
+	if err := os.MkdirAll(cgroupPath, 0o755); err != nil {
+		return "", fmt.Errorf("create container cgroup: %w", err)
+	}
+
+	return cgroupPath, nil
 }
