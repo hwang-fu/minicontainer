@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"strconv"
 	"syscall"
 
 	"github.com/hwang-fu/minicontainer/cgroup"
@@ -45,7 +44,7 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 	// Use provided name or default to short ID (first 12 chars)
 	containerName := cfg.Name
 	if containerName == "" {
-		containerName = ShortID(containerID)
+		containerName = state.ShortID(containerID)
 	}
 
 	// Create initial state with status=created and save to disk
@@ -68,36 +67,10 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 	if err != nil {
 		return nil, fmt.Errorf("create cgroup: %w", err)
 	}
+	if err := cgroup.ApplyResourceLimits(cgroupPath, cfg.MemoryLimit, cfg.CPULimit, cfg.PidsLimit); err != nil {
+		return nil, err
+	}
 	cr.CgroupPath = cgroupPath
-
-	// Apply memory limit if specified
-	if cfg.MemoryLimit != "" {
-		limitBytes, err := cgroup.ParseMemoryLimit(cfg.MemoryLimit)
-		if err != nil {
-			return nil, fmt.Errorf("parse memory limit: %w", err)
-		}
-		if err := cgroup.SetMemoryLimit(cgroupPath, limitBytes); err != nil {
-			return nil, fmt.Errorf("set memory limit: %w", err)
-		}
-	}
-
-	// Apply CPU limit if specified
-	if cfg.CPULimit != "" {
-		cpus, err := strconv.ParseFloat(cfg.CPULimit, 64)
-		if err != nil {
-			return nil, fmt.Errorf("parse cpu limit: %w", err)
-		}
-		if err := cgroup.SetCPULimit(cgroupPath, cpus); err != nil {
-			return nil, fmt.Errorf("set cpu limit: %w", err)
-		}
-	}
-
-	// Apply pids limit if specified
-	if cfg.PidsLimit > 0 {
-		if err := cgroup.SetPidsLimit(cgroupPath, cfg.PidsLimit); err != nil {
-			return nil, fmt.Errorf("set pids limit: %w", err)
-		}
-	}
 
 	// Setup overlayfs: lower=rootfs (read-only), upper=writable layer, merged=container view
 	if cfg.RootfsPath != "" {
