@@ -25,6 +25,8 @@ type ContainerRuntime struct {
 	OverlayCleanup func() error          // Cleanup function for overlayfs (nil if no overlay)
 	Cmd            *exec.Cmd             // The exec.Cmd for the container process
 	CgroupPath     string                // Path to container's cgroup
+	VethHost       string                // Host-side veth interface name
+	VethContainer  string                // Container-side veth interface name (before move)
 }
 
 // NewContainerRuntime initializes a container: generates ID, creates state, sets up overlay.
