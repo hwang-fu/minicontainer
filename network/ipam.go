@@ -34,3 +34,8 @@ func ReleaseIP(ip string) {
 	defer ipamMutex.Unlock()
 	delete(allocatedIPs, ip)
 }
+
+// Gateway returns the bridge IP.
+func Gateway() string {
+	return "172.17.0.1"
+}
