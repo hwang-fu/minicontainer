@@ -37,3 +37,10 @@ func MoveVethToNetns(containerVeth string, pid int) error {
 	}
 	return nil
 }
+
+// DeleteVeth removes a veth interface (also removes its peer).
+func DeleteVeth(vethName string) error {
+	// Ignore errors - interface might already be gone
+	run("ip", "link", "del", vethName)
+	return nil
+}
