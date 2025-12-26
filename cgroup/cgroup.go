@@ -134,3 +134,34 @@ func RemoveContainerCgroup(containerID string) error {
 	}
 	return nil
 }
+
+// ApplyResourceLimits applies all resource limits from config to the cgroup.
+func ApplyResourceLimits(cgroupPath string, memoryLimit string, cpuLimit string, pidsLimit int) error {
+	if memoryLimit != "" {
+		limitBytes, err := ParseMemoryLimit(memoryLimit)
+		if err != nil {
+			return fmt.Errorf("parse memory limit: %w", err)
+		}
+		if err := SetMemoryLimit(cgroupPath, limitBytes); err != nil {
+			return err
+		}
+	}
+
+	if cpuLimit != "" {
+		cpus, err := strconv.ParseFloat(cpuLimit, 64)
+		if err != nil {
+			return fmt.Errorf("parse cpu limit: %w", err)
+		}
+		if err := SetCPULimit(cgroupPath, cpus); err != nil {
+			return err
+		}
+	}
+
+	if pidsLimit > 0 {
+		if err := SetPidsLimit(cgroupPath, pidsLimit); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

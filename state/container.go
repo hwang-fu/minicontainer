@@ -145,3 +145,12 @@ func RefreshState(cs *ContainerState) {
 	}
 	// EPERM means process exists but we can't signal it - keep as running
 }
+
+// ShortID returns the first 12 characters of a container ID.
+// Used for display in ps, logs, and user-facing output.
+func ShortID(fullID string) string {
+	if len(fullID) < 12 {
+		return fullID
+	}
+	return fullID[:12]
+}

@@ -17,12 +17,3 @@ func GenerateContainerID() (string, error) {
 	hash := sha256.Sum256(randBytes)
 	return hex.EncodeToString(hash[:]), nil
 }
-
-// ShortID returns the first 12 characters of a container ID.
-// Used for display in ps, logs, and user-facing output.
-func ShortID(fullID string) string {
-	if len(fullID) < 12 {
-		return fullID
-	}
-	return fullID[:12]
-}
