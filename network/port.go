@@ -28,3 +28,25 @@ func SetupPortForward(containerIP string, mapping string) error {
 
 	return nil
 }
+
+// RemovePortForward removes the iptables DNAT rules.
+func RemovePortForward(containerIP string, mapping string) error {
+	parts := strings.Split(mapping, ":")
+	if len(parts) != 2 {
+		return nil
+	}
+	hostPort := parts[0]
+	containerPort := parts[1]
+
+	// Remove PREROUTING rule
+	run("iptables", "-t", "nat", "-D", "PREROUTING",
+		"-p", "tcp", "--dport", hostPort,
+		"-j", "DNAT", "--to-destination", containerIP+":"+containerPort)
+
+	// Remove OUTPUT rule
+	run("iptables", "-t", "nat", "-D", "OUTPUT",
+		"-p", "tcp", "--dport", hostPort,
+		"-j", "DNAT", "--to-destination", containerIP+":"+containerPort)
+
+	return nil
+}
