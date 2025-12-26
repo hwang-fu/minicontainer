@@ -6,6 +6,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hwang-fu/minicontainer/fs"
 	"github.com/hwang-fu/minicontainer/state"
 )
 
@@ -88,5 +89,19 @@ func RunPs(showAll bool) {
 		}
 		fmt.Printf("%-12s  %-20s  %-10s  %s\n",
 			state.ShortID(c.ID), cmdStr, c.Status, c.Name)
+	}
+}
+
+// RunPrune removes stale overlay directories.
+func RunPrune() {
+	fmt.Println("Cleaning up stale overlay directories...")
+	removed := fs.CleanupStaleOverlays()
+	if len(removed) == 0 {
+		fmt.Println("Nothing to clean.")
+	} else {
+		for _, dir := range removed {
+			fmt.Printf("  Removed: %s\n", dir)
+		}
+		fmt.Printf("Removed %d directories.\n", len(removed))
 	}
 }
