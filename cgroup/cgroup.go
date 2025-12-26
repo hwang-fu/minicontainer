@@ -60,3 +60,13 @@ func AddProcessToCgroup(cgroupPath string, pid int) error {
 	}
 	return nil
 }
+
+// SetMemoryLimit writes the memory limit to the cgroup.
+// limitBytes is the memory limit in bytes.
+func SetMemoryLimit(cgroupPath string, limitBytes int64) error {
+	memoryMaxPath := filepath.Join(cgroupPath, "memory.max")
+	if err := os.WriteFile(memoryMaxPath, []byte(strconv.FormatInt(limitBytes, 10)), 0o644); err != nil {
+		return fmt.Errorf("set memory limit: %w", err)
+	}
+	return nil
+}
