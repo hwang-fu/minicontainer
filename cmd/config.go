@@ -14,6 +14,7 @@ type ContainerConfig struct {
 	Volumes     []string // Volume mounts in "host:container" or "host:container:ro" format
 	Detached    bool     // -d: Run container in background
 	MemoryLimit string   // Memory limit (e.g., "256m", "1g")
+	CPULimit    string   // CPU limit (e.g., "0.5", "2")
 }
 
 // ParseRunFlags parses command-line flags for the run command.
