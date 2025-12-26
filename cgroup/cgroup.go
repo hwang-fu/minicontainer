@@ -1,6 +1,10 @@
 package cgroup
 
-import "path/filepath"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+)
 
 // CgroupBasePath is the root cgroup directory for all minicontainer cgroups.
 const CgroupBasePath = "/sys/fs/cgroup/minicontainer"
@@ -10,10 +14,25 @@ func ContainerCgroupPath(containerID string) string {
 	return filepath.Join(CgroupBasePath, containerID)
 }
 
-func EnsureParentCgroup() {
-	panic("todo")
+// EnsureParentCgroup creates the minicontainer parent cgroup and enables controllers.
+// This MUST be called before creating any container cgroups.
+// Enables: cpu, memory, pids controllers for child cgroups.
+func EnsureParentCgroup() error {
+	// Create parent cgroup directory
+	if err := os.MkdirAll(CgroupBasePath, 0o755); err != nil {
+		return fmt.Errorf("create cgroup dir: %w", err)
+	}
+
+	// Enable controllers for child cgroups by writing to subtree_control
+	// Format: "+cpu +memory +pids" enables these controllers for children
+	subtreeControlPath := filepath.Join(CgroupBasePath, "cgroup.subtree_control")
+	if err := os.WriteFile(subtreeControlPath, []byte("+cpu +memory +pids"), 0o644); err != nil {
+		return fmt.Errorf("enable cgroup controllers: %w", err)
+	}
+
+	return nil
 }
 
-func CreateContainerCgroup(containerID string) {
+func CreateContainerCgroup(containerID string) (string, error) {
 	panic("todo")
 }
