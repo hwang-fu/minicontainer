@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 // CgroupBasePath is the root cgroup directory for all minicontainer cgroups.

@@ -47,6 +47,12 @@ func ParseRunFlags(args []string) (ContainerConfig, []string) {
 				i += 2
 			}
 
+		case "--memory":
+			if i+1 < len(args) {
+				cfg.MemoryLimit = args[i+1]
+				i += 2
+			}
+
 		case "-e", "--env":
 			// Environment variable in KEY=VALUE format
 			// Can be specified multiple times
