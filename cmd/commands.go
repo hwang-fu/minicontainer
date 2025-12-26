@@ -68,3 +68,25 @@ func RunRmAll() {
 		fmt.Println(state.ShortID(cs.ID))
 	}
 }
+
+// RunPs lists containers.
+func RunPs(showAll bool) {
+	containers, err := state.ListContainers()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("%-12s  %-20s  %-10s  %s\n", "CONTAINER ID", "COMMAND", "STATUS", "NAME")
+	for _, c := range containers {
+		if !showAll && c.Status != state.StatusRunning {
+			continue
+		}
+		cmdStr := strings.Join(c.Command, " ")
+		if len(cmdStr) > 20 {
+			cmdStr = cmdStr[:17] + "..."
+		}
+		fmt.Printf("%-12s  %-20s  %-10s  %s\n",
+			state.ShortID(c.ID), cmdStr, c.Status, c.Name)
+	}
+}
