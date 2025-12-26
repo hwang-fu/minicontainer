@@ -54,6 +54,12 @@ func ParseRunFlags(args []string) (ContainerConfig, []string) {
 				i += 2
 			}
 
+		case "--cpus":
+			if i+1 < len(args) {
+				cfg.CPULimit = args[i+1]
+				i += 2
+			}
+
 		case "-e", "--env":
 			// Environment variable in KEY=VALUE format
 			// Can be specified multiple times

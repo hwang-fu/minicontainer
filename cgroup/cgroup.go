@@ -109,8 +109,8 @@ func SetCPULimit(cgroupPath string, cpus float64) error {
 	quota := int64(cpus * float64(period))
 
 	cpuMaxPath := filepath.Join(cgroupPath, "cpu.max")
-	value := fmt.Sprintf("%d %d", quota, period)
-	if err := os.WriteFile(cpuMaxPath, []byte(value), 0o644); err != nil {
+	value := fmt.Appendf(nil, "%d %d", quota, period)
+	if err := os.WriteFile(cpuMaxPath, value, 0o644); err != nil {
 		return fmt.Errorf("set cpu limit: %w", err)
 	}
 	return nil

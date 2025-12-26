@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/hwang-fu/minicontainer/cgroup"
@@ -77,6 +78,17 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 		}
 		if err := cgroup.SetMemoryLimit(cgroupPath, limitBytes); err != nil {
 			return nil, fmt.Errorf("set memory limit: %w", err)
+		}
+	}
+
+	// Apply CPU limit if specified
+	if cfg.CPULimit != "" {
+		cpus, err := strconv.ParseFloat(cfg.CPULimit, 64)
+		if err != nil {
+			return nil, fmt.Errorf("parse cpu limit: %w", err)
+		}
+		if err := cgroup.SetCPULimit(cgroupPath, cpus); err != nil {
+			return nil, fmt.Errorf("set cpu limit: %w", err)
 		}
 	}
 
