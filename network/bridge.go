@@ -25,6 +25,11 @@ func EnsureBridge() error {
 		return fmt.Errorf("create bridge: %w", err)
 	}
 
+	// Setup NAT for outbound connectivity
+	if err := SetupNAT(); err != nil {
+		return fmt.Errorf("setup NAT: %w", err)
+	}
+
 	// Assign IP address
 	if err := run("ip", "addr", "add", BridgeCIDR, "dev", BridgeName); err != nil {
 		return fmt.Errorf("assign bridge IP: %w", err)

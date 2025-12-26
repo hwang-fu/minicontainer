@@ -1,5 +1,7 @@
 package network
 
+import "fmt"
+
 // SetupNAT configures iptables for container outbound connectivity.
 func SetupNAT() error {
 	// Enable IP forwarding
