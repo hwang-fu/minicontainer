@@ -18,7 +18,7 @@ func AllocateIP() (string, error) {
 	defer ipamMutex.Unlock()
 
 	for nextIP < 65534 { // Max IPs in /16
-		ip := fmt.Sprintf("172.17.0.%d", nextIP)
+		ip := fmt.Sprintf("172.18.0.%d", nextIP)
 		nextIP++
 		if !allocatedIPs[ip] {
 			allocatedIPs[ip] = true
@@ -37,5 +37,5 @@ func ReleaseIP(ip string) {
 
 // Gateway returns the bridge IP.
 func Gateway() string {
-	return "172.17.0.1"
+	return "172.18.0.1"
 }

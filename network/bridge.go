@@ -9,7 +9,7 @@ import (
 
 const (
 	BridgeName = "minicontainer0"
-	BridgeCIDR = "172.17.0.1/16"
+	BridgeCIDR = "172.18.0.1/16"
 )
 
 // EnsureBridge creates the minicontainer0 bridge if it doesn't exist.

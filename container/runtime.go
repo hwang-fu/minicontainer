@@ -78,6 +78,13 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 	cr.VethHost = hostVeth
 	cr.VethContainer = containerVeth
 
+	// Allocate IP for container
+	containerIP, err := network.AllocateIP()
+	if err != nil {
+		return nil, fmt.Errorf("allocate IP: %w", err)
+	}
+	cr.ContainerIP = containerIP
+
 	// Cgroup creation
 	cgroupPath, err := cgroup.CreateContainerCgroup(containerID)
 	if err != nil {
