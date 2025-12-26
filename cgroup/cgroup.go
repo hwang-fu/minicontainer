@@ -38,7 +38,7 @@ func EnsureParentCgroup() error {
 func CreateContainerCgroup(containerID string) (string, error) {
 	// Ensure parent exists and has controllers enabled
 	if err := EnsureParentCgroup(); err != nil {
-		return "", nil
+		return "", err
 	}
 
 	// Create container-specific cgroup directory
@@ -48,4 +48,14 @@ func CreateContainerCgroup(containerID string) (string, error) {
 	}
 
 	return cgroupPath, nil
+}
+
+// AddProcessToCgroup writes a PID to the cgroup's cgroup.procs file.
+// This adds the process (and its children) to the cgroup.
+func AddProcessToCgroup(cgroupPath string, pid int) error {
+	procsPath := filepath.Join(cgroupPath, "cgroup.procs")
+	if err := os.WriteFile(procsPath, []byte(fmt.Sprintf("%d", pid)), 0o644); err != nil {
+		return fmt.Errorf("add process to cgroup: %w", err)
+	}
+	return nil
 }
