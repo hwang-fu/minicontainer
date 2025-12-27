@@ -16,3 +16,18 @@ func NewRegistryClient(ref ImageReference) *RegistryClient {
 		client: &http.Client{},
 	}
 }
+
+// doRequest makes an authenticated request to the registry.
+func (c *RegistryClient) doRequest(method, url string) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add auth token if we have one
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+
+	return c.client.Do(req)
+}
