@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -18,9 +19,11 @@ func ImageDir(name, tag string) string {
 }
 
 // LayerDir returns the path where a layer's contents are extracted.
-// Example: LayerDir("sha256:abc123...") -> "/var/lib/minicontainer/layers/sha256:abc123..."
+// Example: LayerDir("sha256:abc123...") -> "/var/lib/minicontainer/layers/abc123..."
 func LayerDir(digest string) string {
-	return filepath.Join(LayerBaseDir, digest)
+	// Strip the algorithm prefix (sha256:) to avoid colons in paths
+	cleanDigest := strings.TrimPrefix(digest, "sha256:")
+	return filepath.Join(LayerBaseDir, cleanDigest)
 }
 
 // EnsureImageDirs creates the base image and layer directories if they don't exist.

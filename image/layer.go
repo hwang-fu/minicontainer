@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // ExtractLayer extracts a tarball to the layer directory and returns its digest.
@@ -43,8 +44,9 @@ func ExtractLayer(tarballPath string) (digest string, size int64, err error) {
 	}
 
 	// Step 3: Create the layer directory
-	layerPath := LayerDir(digest)
-	if err := os.MkdirAll(layerPath, 0o755); err != nil {
+	layerID := strings.TrimPrefix(digest, "sha256:")
+	layerPath := LayerDir(layerID)
+	if err = os.MkdirAll(layerPath, 0o755); err != nil {
 		return "", 0, fmt.Errorf("create layer dir: %w", err)
 	}
 
