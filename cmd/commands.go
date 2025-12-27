@@ -9,6 +9,7 @@ import (
 
 	"github.com/hwang-fu/minicontainer/cgroup"
 	"github.com/hwang-fu/minicontainer/fs"
+	"github.com/hwang-fu/minicontainer/image"
 	"github.com/hwang-fu/minicontainer/state"
 )
 
@@ -106,4 +107,21 @@ func RunPrune() {
 		}
 		fmt.Printf("Removed %d directories.\n", len(removed))
 	}
+}
+
+// RunImport imports a rootfs tarball as an image.
+// Creates a single-layer image from the tarball that can be used with `run`.
+//
+// Parameters:
+//   - tarballPath: path to the .tar or .tar.gz rootfs archive
+//   - imageRef: image reference in "name" or "name:tag" format
+func RunImport(tarballPath, imageRef string) {
+	meta, err := image.ImportTarball(tarballPath, imageRef)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "import failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Print success with short ID (first 12 chars)
+	fmt.Printf("Imported %s:%s (id: %s)\n", meta.Name, meta.Tag, meta.ID[:12])
 }

@@ -72,6 +72,13 @@ func main() {
 	case "prune":
 		cmd.RunPrune()
 
+	case "import":
+		if len(os.Args) < 4 {
+			fmt.Fprintln(os.Stderr, "usage: minicontainer import <tarball> <name[:tag]>")
+			os.Exit(1)
+		}
+		cmd.RunImport(os.Args[2], os.Args[3])
+
 	case "init":
 		cmd.RunInit(os.Args[2:])
 
@@ -91,5 +98,6 @@ func printUsage() {
 	fmt.Println("  rm       Remove a stopped container")
 	fmt.Println("  ps       List containers")
 	fmt.Println("  prune    Remove stale overlay directories")
+	fmt.Println("  import   Import a tarball as an image")
 	fmt.Println("  version  Show version")
 }
