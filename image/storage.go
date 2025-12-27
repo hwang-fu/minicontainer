@@ -1,6 +1,7 @@
 package image
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
