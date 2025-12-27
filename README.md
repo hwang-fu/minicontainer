@@ -62,7 +62,7 @@ This is also why containers only run natively on Linux — on macOS and Windows,
 | **Filesystem** | `pivot_root`, overlayfs (COW), volume mounts, `/proc`, `/sys`, `/dev` |
 | **Networking** | Bridge (`minicontainer0`), veth pairs, IPAM, NAT, port publishing (`-p`) |
 | **Resource Limits** | Cgroups v2: memory (`--memory`), CPU (`--cpus`), pids (`--pids-limit`) |
-| **Images** | Import tarballs, content-addressable layers, `images`, `rmi` |
+| **Images** | Pull from Docker Hub, import tarballs, content-addressable layers |
 | **Lifecycle** | Container IDs, state persistence, `ps`, `stop`, `rm` |
 | **Terminal** | PTY allocation (`-it`), signal forwarding |
 | **Modes** | Interactive, non-interactive, detached (`-d`) |
@@ -71,6 +71,7 @@ This is also why containers only run natively on Linux — on macOS and Windows,
 
 ```
 minicontainer run [flags] <image|--rootfs> <cmd>  Run a container
+minicontainer pull <image>                        Pull image from registry
 minicontainer ps [-a]                             List containers
 minicontainer stop <container>                    Stop a running container
 minicontainer rm <container|--all>                Remove stopped containers
@@ -135,20 +136,30 @@ sudo ./minicontainer run -it --memory 256m --cpus 0.5 --pids-limit 50 \
     --rootfs /tmp/alpine-rootfs /bin/sh
 ```
 
-### 4. Using images (alternative)
+### 4. Pull from Docker Hub (recommended)
+
+```bash
+# Pull an image
+sudo ./minicontainer pull alpine
+
+# List images
+sudo ./minicontainer images
+
+# Run from pulled image
+sudo ./minicontainer run -it alpine /bin/sh
+
+# Remove image
+sudo ./minicontainer rmi alpine
+```
+
+### 5. Import local tarball (alternative)
 
 ```bash
 # Import tarball as image
 sudo ./minicontainer import alpine-minirootfs-3.19.0-x86_64.tar.gz alpine:3.19
 
-# List images
-sudo ./minicontainer images
-
-# Run from image (no --rootfs needed!)
+# Run from imported image
 sudo ./minicontainer run -it alpine:3.19 /bin/sh
-
-# Remove image
-sudo ./minicontainer rmi alpine:3.19
 ```
 
 ### Inside the container
@@ -256,7 +267,10 @@ minicontainer/
 │   ├── import.go           # Tarball import
 │   ├── lookup.go           # Image lookup for run
 │   ├── list.go             # List all images
-│   └── remove.go           # Remove image and layers
+│   ├── remove.go           # Remove image and layers
+│   ├── reference.go        # Image reference parsing
+│   ├── registry.go         # Registry client and authentication
+│   └── pull.go             # Pull images from registries
 └── Makefile
 ```
 
@@ -270,7 +284,7 @@ minicontainer/
 - [x] **Phase 4**: Resource limits (cgroups v2: memory, CPU, pids)
 - [x] **Phase 5**: Networking (veth, bridge, NAT, port publishing)
 - [x] **Phase 6**: OCI images (import, images, rmi, run from image)
-- [ ] **Phase 7**: Registry pull (Docker Hub)
+- [x] **Phase 7**: Registry pull (Docker Hub, multi-arch support)
 - [ ] **Phase 8**: Polish (logs, exec, inspect)
 
 ---
