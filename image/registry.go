@@ -1,11 +1,29 @@
 package image
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 )
+
+// ManifestV2 represents an OCI/Docker image manifest (schema v2).
+// Contains references to the config and layer blobs.
+type ManifestV2 struct {
+	SchemaVersion int    `json:"schemaVersion"`
+	MediaType     string `json:"mediaType"`
+	Config        struct {
+		MediaType string `json:"mediaType"`
+		Digest    string `json:"digest"`
+		Size      int64  `json:"size"`
+	} `json:"config"`
+	Layers []struct {
+		MediaType string `json:"mediaType"`
+		Digest    string `json:"digest"`
+		Size      int64  `json:"size"`
+	} `json:"layers"`
+}
 
 // RegistryClient handles communication with OCI registries.
 type RegistryClient struct {
@@ -92,14 +110,15 @@ func parseAuthHeader(header string) (realm, service string) {
 	header = strings.TrimPrefix(header, "Bearer ")
 
 	// Parse key="value" pairs
-	for _, part := range strings.Split(header, ",") {
+	for part := range strings.SplitSeq(header, ",") {
 		part = strings.TrimSpace(part)
-		if strings.HasPrefix(part, "realm=") {
-			realm = strings.Trim(strings.TrimPrefix(part, "realm="), "\"")
-		} else if strings.HasPrefix(part, "service=") {
-			service = strings.Trim(strings.TrimPrefix(part, "service="), "\"")
+		if val, ok := strings.CutPrefix(part, "realm="); ok {
+			realm = strings.Trim(val, "\"")
+		} else if val, ok := strings.CutPrefix(part, "service="); ok {
+			service = strings.Trim(val, "\"")
 		}
 	}
+
 	return realm, service
 }
 
