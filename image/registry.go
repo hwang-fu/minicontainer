@@ -1,6 +1,8 @@
 package image
 
 import (
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -18,6 +20,69 @@ func NewRegistryClient(ref ImageReference) *RegistryClient {
 		ref:    ref,
 		client: &http.Client{},
 	}
+}
+
+// Authenticate obtains a bearer token for the registry.
+// For Docker Hub, this involves:
+//  1. Request to registry returns 401 with WWW-Authenticate header
+//  2. Parse header to get realm, service, scope
+//  3. Request token from auth endpoint (anonymous for public images)
+func (c *RegistryClient) Authenticate() error {
+	// Step 1: Make initial request to trigger 401
+	url := fmt.Sprintf("https://%s/v2/", c.ref.Registry)
+	resp, err := c.client.Get(url)
+	if err != nil {
+		return fmt.Errorf("registry ping: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// If 200, no auth needed
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	}
+
+	// Expect 401 with WWW-Authenticate header
+	if resp.StatusCode != http.StatusUnauthorized {
+		return fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	// Step 2: Parse WWW-Authenticate header
+	// Format: Bearer realm="https://auth.docker.io/token",service="registry.docker.io",scope="repository:library/alpine:pull"
+	authHeader := resp.Header.Get("WWW-Authenticate")
+	if authHeader == "" {
+		return fmt.Errorf("missing WWW-Authenticate header")
+	}
+
+	realm, service := parseAuthHeader(authHeader)
+	if realm == "" {
+		return fmt.Errorf("could not parse auth header: %s", authHeader)
+	}
+
+	// Step 3: Request token
+	scope := fmt.Sprintf("repository:%s:pull", c.ref.Repository)
+	tokenURL := fmt.Sprintf("%s?service=%s&scope=%s", realm, service, scope)
+
+	tokenResp, err := c.client.Get(tokenURL)
+	if err != nil {
+		return fmt.Errorf("token request: %w", err)
+	}
+	defer tokenResp.Body.Close()
+
+	if tokenResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(tokenResp.Body)
+		return fmt.Errorf("token request failed: %d: %s", tokenResp.StatusCode, body)
+	}
+
+	// Parse token response
+	var tokenData struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(tokenResp.Body).Decode(&tokenData); err != nil {
+		return fmt.Errorf("parse token response: %w", err)
+	}
+
+	c.token = tokenData.Token
+	return nil
 }
 
 // parseAuthHeader extracts realm and service from WWW-Authenticate header.
