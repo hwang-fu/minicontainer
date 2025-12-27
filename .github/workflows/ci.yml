@@ -1,0 +1,34 @@
+name: CI
+
+# Run on push to any branch and PRs to main
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    # Skip if commit message contains [no ci] or [skip ci]
+    if: |
+      !contains(github.event.head_commit.message, '[no ci]') &&
+      !contains(github.event.head_commit.message, '[skip ci]')
+
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Set up Go environment
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      # Run the build and checks
+      - name: Run make check
+        run: make check
