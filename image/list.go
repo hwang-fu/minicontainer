@@ -1,5 +1,10 @@
 package image
 
+import (
+	"os"
+	"path/filepath"
+)
+
 // ListImages returns metadata for all locally stored images.
 // Scans the image directory structure: /var/lib/minicontainer/images/<name>/<tag>/
 //

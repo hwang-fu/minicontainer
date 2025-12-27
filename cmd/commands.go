@@ -162,6 +162,8 @@ func ResolveRootfs(cfg *ContainerConfig, cmdArgs []string) (*ContainerConfig, []
 	return cfg, cmdArgs, nil
 }
 
+// RunImages lists all local images.
+// Displays repository, tag, image ID (short), size, and creation time.
 func RunImages() {
 	images, err := image.ListImages()
 	if err != nil {
