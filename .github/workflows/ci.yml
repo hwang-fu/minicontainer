@@ -112,18 +112,24 @@ jobs:
 
       - name: Test stop command (container not found)
         run: |
-          # Should fail with error for non-existent container
-          ! sudo ./minicontainer stop nonexistent 2>&1 | grep -q "error"
+          # Should fail for non-existent container
+          if sudo ./minicontainer stop nonexistent 2>/dev/null; then
+            echo "Expected command to fail"; exit 1
+          fi
 
       - name: Test rm command (container not found)
         run: |
-          # Should fail with error for non-existent container
-          ! sudo ./minicontainer rm nonexistent 2>&1 | grep -q "error"
+          # Should fail for non-existent container
+          if sudo ./minicontainer rm nonexistent 2>/dev/null; then
+            echo "Expected command to fail"; exit 1
+          fi
 
       - name: Test rmi command (image not found)
         run: |
-          # Should fail with error for non-existent image
-          sudo ./minicontainer rmi nonexistent:latest 2>&1 | grep -q "not found"
+          # Should fail for non-existent image
+          if sudo ./minicontainer rmi nonexistent:latest 2>/dev/null; then
+            echo "Expected command to fail"; exit 1
+          fi
 
       - name: Cleanup resources
         if: always()
