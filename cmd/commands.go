@@ -162,6 +162,29 @@ func ResolveRootfs(cfg *ContainerConfig, cmdArgs []string) (*ContainerConfig, []
 	return cfg, cmdArgs, nil
 }
 
+func RunImages() {
+	images, err := image.ListImages()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Print header
+	fmt.Printf("%-15s  %-10s  %-12s  %-10s  %s\n",
+		"REPOSITORY", "TAG", "IMAGE ID", "SIZE", "CREATED")
+
+	// Print each image
+	for _, img := range images {
+		fmt.Printf("%-15s  %-10s  %-12s  %-10s  %s\n",
+			img.Name,
+			img.Tag,
+			img.ID[:12],
+			formatSize(img.Size),
+			formatTimeAgo(img.CreatedAt),
+		)
+	}
+}
+
 // formatSize converts bytes to human-readable format (e.g., "3.2 MB").
 func formatSize(bytes int64) string {
 	const (
