@@ -20,7 +20,7 @@ MiniContainer implements the core primitives that power Docker and other contain
 
 ---
 
-## Container Technology: Orchestration, Not Invention
+## Container Technology: Orchestration, Not Invention (Some of My Personal Opinions)
 
 Container technology is essentially a clever packaging of several pre-existing Linux kernel features:
 
