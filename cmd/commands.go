@@ -161,3 +161,76 @@ func ResolveRootfs(cfg *ContainerConfig, cmdArgs []string) (*ContainerConfig, []
 	cfg.RootfsPath = rootfsPath
 	return cfg, cmdArgs, nil
 }
+
+// RunImages lists all local images.
+// Displays repository, tag, image ID (short), size, and creation time.
+func RunImages() {
+	images, err := image.ListImages()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Print header
+	fmt.Printf("%-15s  %-10s  %-12s  %-10s  %s\n",
+		"REPOSITORY", "TAG", "IMAGE ID", "SIZE", "CREATED")
+
+	// Print each image
+	for _, img := range images {
+		fmt.Printf("%-15s  %-10s  %-12s  %-10s  %s\n",
+			img.Name,
+			img.Tag,
+			img.ID[:12],
+			formatSize(img.Size),
+			formatTimeAgo(img.CreatedAt),
+		)
+	}
+}
+
+// formatSize converts bytes to human-readable format (e.g., "3.2 MB").
+func formatSize(bytes int64) string {
+	const (
+		KB = 1024
+		MB = 1024 * KB
+		GB = 1024 * MB
+	)
+
+	switch {
+	case bytes >= GB:
+		return fmt.Sprintf("%.1f GB", float64(bytes)/GB)
+	case bytes >= MB:
+		return fmt.Sprintf("%.1f MB", float64(bytes)/MB)
+	case bytes >= KB:
+		return fmt.Sprintf("%.1f KB", float64(bytes)/KB)
+	default:
+		return fmt.Sprintf("%d B", bytes)
+	}
+}
+
+// formatTimeAgo converts a time to relative format (e.g., "2 minutes ago").
+func formatTimeAgo(t time.Time) string {
+	duration := time.Since(t)
+
+	switch {
+	case duration < time.Minute:
+		return "Just now"
+	case duration < time.Hour:
+		mins := int(duration.Minutes())
+		if mins == 1 {
+			return "1 minute ago"
+		}
+		return fmt.Sprintf("%d minutes ago", mins)
+	case duration < 24*time.Hour:
+		hours := int(duration.Hours())
+		if hours == 1 {
+			return "1 hour ago"
+		}
+		return fmt.Sprintf("%d hours ago", hours)
+	default:
+		days := int(duration.Hours() / 24)
+		if days == 1 {
+			return "1 day ago"
+		}
+		return fmt.Sprintf("%d days ago", days)
+	}
+}

@@ -74,6 +74,9 @@ func main() {
 	case "prune":
 		cmd.RunPrune()
 
+	case "images":
+		cmd.RunImages()
+
 	case "import":
 		if len(os.Args) < 4 {
 			fmt.Fprintln(os.Stderr, "usage: minicontainer import <tarball> <name[:tag]>")
