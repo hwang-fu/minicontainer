@@ -11,3 +11,22 @@ type ImageMetadata struct {
 	CreatedAt    time.Time `json:"created_at"`    // When image was created/imported
 	Size         int64     `json:"size"`          // Total size in bytes
 }
+
+// SaveMetadata writes image metadata to manifest.json in the image directory.
+func SaveMetadata(meta *ImageMetadata) error {
+	dir := ImageDir(meta.Name, meta.Tag)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create image dir: %w", err)
+	}
+
+	data, err := json.MarshalIndent(meta, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal metadata: %w", err)
+	}
+
+	path := filepath.Join(dir, "manifest.json")
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return fmt.Errorf("write manifest: %w", err)
+	}
+	return nil
+}
