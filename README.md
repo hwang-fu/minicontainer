@@ -20,6 +20,40 @@ MiniContainer implements the core primitives that power Docker and other contain
 
 ---
 
+## Container Technology: Orchestration, Not Invention
+
+Container technology is essentially a clever packaging of several pre-existing Linux kernel features:
+
+| Capability | Underlying Linux Technology |
+|------------|----------------------------|
+| Process isolation | **namespaces** (PID, network, mount, user, etc.) |
+| Resource limiting | **cgroups** (control groups) |
+| Layered filesystem | **OverlayFS / AUFS** |
+| Root directory isolation | **chroot / pivot_root** |
+
+All of these technologies existed long before Docker or any modern container runtime came along. You can even manually stitch together these primitives to create a "poor man's container":
+
+```bash
+# Create an isolated namespace and run bash inside it
+unshare --mount --uts --ipc --net --pid --fork bash
+```
+
+### The Real Value of Container Tooling
+
+The innovation isn't in the technology itself — it's in the **abstraction and developer experience (DX)**:
+
+- Wrapping complex kernel APIs into simple commands like `docker run` or `podman run`
+- Defining a standard image format and declarative build syntax (Dockerfile, OCI spec)
+- Building ecosystem infrastructure like registries (Docker Hub, GitHub Container Registry)
+
+It's similar to how Git didn't invent "version control" as a concept, but elegantly combined snapshots, DAGs, and content-addressable storage into something that just *works*.
+
+> **The insight:** Container technology is orchestration, not invention. The real heavy lifting is done by the Linux kernel.
+
+This is also why containers only run natively on Linux — on macOS and Windows, container runtimes actually spin up a hidden Linux VM under the hood.
+
+---
+
 ## Features
 
 | Category | Features |
