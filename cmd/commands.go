@@ -201,6 +201,15 @@ func RunRmi(ref string) {
 	fmt.Printf("Removed: %s\n", ref)
 }
 
+func RunPull(ref string) {
+	meta, err := image.Pull(ref)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "pull failed: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Pulled: %s:%s (%s)\n", meta.Name, meta.Tag, meta.ID[:12])
+}
+
 // formatSize converts bytes to human-readable format (e.g., "3.2 MB").
 func formatSize(bytes int64) string {
 	const (
