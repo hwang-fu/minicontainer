@@ -6,6 +6,7 @@ import (
 
 	"github.com/hwang-fu/minicontainer/cmd"
 	"github.com/hwang-fu/minicontainer/container"
+	"github.com/hwang-fu/minicontainer/image"
 )
 
 func main() {
@@ -72,6 +73,27 @@ func main() {
 	case "prune":
 		cmd.RunPrune()
 
+	case "import":
+		// Import a rootfs tarball as an image
+		// Usage: minicontainer import <tarball> <name:tag>
+		if len(os.Args) < 4 {
+			fmt.Fprintln(os.Stderr, "usage: minicontainer import <tarball> <name[:tag]>")
+			os.Exit(1)
+		}
+
+		tarballPath := os.Args[2]
+		imageRef := os.Args[3]
+
+		// Import the tarball as an image
+		meta, err := image.ImportTarball(tarballPath, imageRef)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "import failed: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Print success with short ID (first 12 chars)
+		fmt.Printf("Imported %s:%s (id: %s)\n", meta.Name, meta.Tag, meta.ID[:12])
+
 	case "init":
 		cmd.RunInit(os.Args[2:])
 
@@ -91,5 +113,6 @@ func printUsage() {
 	fmt.Println("  rm       Remove a stopped container")
 	fmt.Println("  ps       List containers")
 	fmt.Println("  prune    Remove stale overlay directories")
+	fmt.Println("  import   Import a tarball as an image")
 	fmt.Println("  version  Show version")
 }
