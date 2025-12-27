@@ -1,6 +1,9 @@
 package image
 
-import "net/http"
+import (
+	"net/http"
+	"strings"
+)
 
 // RegistryClient handles communication with OCI registries.
 type RegistryClient struct {
@@ -15,6 +18,24 @@ func NewRegistryClient(ref ImageReference) *RegistryClient {
 		ref:    ref,
 		client: &http.Client{},
 	}
+}
+
+// parseAuthHeader extracts realm and service from WWW-Authenticate header.
+// Example: Bearer realm="https://auth.docker.io/token",service="registry.docker.io"
+func parseAuthHeader(header string) (realm, service string) {
+	// Remove "Bearer " prefix
+	header = strings.TrimPrefix(header, "Bearer ")
+
+	// Parse key="value" pairs
+	for _, part := range strings.Split(header, ",") {
+		part = strings.TrimSpace(part)
+		if strings.HasPrefix(part, "realm=") {
+			realm = strings.Trim(strings.TrimPrefix(part, "realm="), "\"")
+		} else if strings.HasPrefix(part, "service=") {
+			service = strings.Trim(strings.TrimPrefix(part, "service="), "\"")
+		}
+	}
+	return realm, service
 }
 
 // doRequest makes an authenticated request to the registry.
