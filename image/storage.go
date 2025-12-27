@@ -21,3 +21,14 @@ func ImageDir(name, tag string) string {
 func LayerDir(digest string) string {
 	return filepath.Join(LayerBaseDir, digest)
 }
+
+// EnsureImageDirs creates the base image and layer directories if they don't exist.
+func EnsureImageDirs() error {
+	if err := os.MkdirAll(ImageBaseDir, 0o755); err != nil {
+		return fmt.Errorf("create image dir: %w", err)
+	}
+	if err := os.MkdirAll(LayerBaseDir, 0o755); err != nil {
+		return fmt.Errorf("create layer dir: %w", err)
+	}
+	return nil
+}
