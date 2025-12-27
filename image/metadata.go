@@ -1,6 +1,11 @@
 package image
 
-import "time"
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"time"
+)
 
 type ImageMetadata struct {
 	ID           string    `json:"id"`            // SHA256 hash of image content (64 hex chars)
@@ -29,4 +34,20 @@ func SaveMetadata(meta *ImageMetadata) error {
 		return fmt.Errorf("write manifest: %w", err)
 	}
 	return nil
+}
+
+// LoadMetadata reads image metadata from manifest.json.
+func LoadMetadata(name, tag string) (*ImageMetadata, error) {
+	path := filepath.Join(ImageDir(name, tag), "manifest.json")
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read manifest: %w", err)
+	}
+
+	var meta ImageMetadata
+	if err := json.Unmarshal(data, &meta); err != nil {
+		return nil, fmt.Errorf("unmarshal metadata: %w", err)
+	}
+	return &meta, nil
 }
