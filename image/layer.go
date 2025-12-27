@@ -51,12 +51,25 @@ func LayerExists(digest string) bool {
 
 // RemoveLayer deletes a layer directory by its digest.
 // Called during image removal when layer is no longer referenced.
+// Uses os.RemoveAll to recursively delete the directory and all contents.
 //
 // Parameters:
 //   - digest: the "sha256:<hex>" identifier of the layer to remove
+//
+// Returns:
+//   - error if removal fails (nil if layer doesn't exist - idempotent)
 func RemoveLayer(digest string) error {
-	// TODO: implement
-	panic("todo")
+	// Get the path where this layer is stored
+	path := LayerDir(digest)
+
+	// RemoveAll deletes path and any children it contains.
+	// Returns nil if path doesn't exist (idempotent operation).
+	// This is safe because LayerDir always returns a path under LayerBaseDir.
+	if err := os.RemoveAll(path); err != nil {
+		return fmt.Errorf("remove layer %s: %w", digest, err)
+	}
+
+	return nil
 }
 
 // computeDigest calculates the SHA256 hash of a file.
