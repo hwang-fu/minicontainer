@@ -77,6 +77,13 @@ func main() {
 	case "images":
 		cmd.RunImages()
 
+	case "rmi":
+		if len(os.Args) < 3 {
+			fmt.Fprintln(os.Stderr, "usage: minicontainer rmi <image>")
+			os.Exit(1)
+		}
+		cmd.RunRmi(os.Args[2])
+
 	case "import":
 		if len(os.Args) < 4 {
 			fmt.Fprintln(os.Stderr, "usage: minicontainer import <tarball> <name[:tag]>")
@@ -103,6 +110,8 @@ func printUsage() {
 	fmt.Println("  rm       Remove a stopped container")
 	fmt.Println("  ps       List containers")
 	fmt.Println("  prune    Remove stale overlay directories")
+	fmt.Println("  images   List local images")
+	fmt.Println("  rmi      Remove an image")
 	fmt.Println("  import   Import a tarball as an image")
 	fmt.Println("  version  Show version")
 }

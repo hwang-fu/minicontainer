@@ -187,6 +187,20 @@ func RunImages() {
 	}
 }
 
+// RunRmi removes an image by reference (name:tag or ID).
+// Deletes image metadata and unreferenced layers.
+//
+// Parameters:
+//   - ref: image reference ("name:tag") or image ID (full or short)
+func RunRmi(ref string) {
+	if err := image.RemoveImage(ref); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Removed: %s\n", ref)
+}
+
 // formatSize converts bytes to human-readable format (e.g., "3.2 MB").
 func formatSize(bytes int64) string {
 	const (
