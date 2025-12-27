@@ -136,3 +136,44 @@ func (c *RegistryClient) doRequest(method, url string) (*http.Response, error) {
 
 	return c.client.Do(req)
 }
+
+func (c *RegistryClient) FetchManifest() (*ManifestV2, error) {
+	// Build manifest URL: /v2/<repo>/manifests/<tag>
+	url := fmt.Sprintf("https://%s/v2/%s/manifests/%s",
+		c.ref.Registry, c.ref.Repository, c.ref.Tag)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create manifest request: %w", err)
+	}
+
+	// Add auth token
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+
+	// Accept both Docker and OCI manifest formats
+	// Docker v2 schema 2 is most common for Docker Hub
+	req.Header.Set("Accept", strings.Join([]string{
+		"application/vnd.docker.distribution.manifest.v2+json",
+		"application/vnd.oci.image.manifest.v1+json",
+	}, ", "))
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch manifest: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("manifest request failed: %d: %s", resp.StatusCode, body)
+	}
+
+	var manifest ManifestV2
+	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
+		return nil, fmt.Errorf("parse manifest: %w", err)
+	}
+
+	return &manifest, nil
+}
