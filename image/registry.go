@@ -25,6 +25,18 @@ type ManifestV2 struct {
 	} `json:"layers"`
 }
 
+// ImageConfig represents the OCI image configuration.
+// Contains runtime settings like Env, Cmd, Entrypoint.
+type ImageConfig struct {
+	Config struct {
+		Env        []string `json:"Env"`
+		Cmd        []string `json:"Cmd"`
+		Entrypoint []string `json:"Entrypoint"`
+		WorkingDir string   `json:"WorkingDir"`
+		User       string   `json:"User"`
+	} `json:"config"`
+}
+
 // RegistryClient handles communication with OCI registries.
 type RegistryClient struct {
 	ref    ImageReference
@@ -103,40 +115,12 @@ func (c *RegistryClient) Authenticate() error {
 	return nil
 }
 
-// parseAuthHeader extracts realm and service from WWW-Authenticate header.
-// Example: Bearer realm="https://auth.docker.io/token",service="registry.docker.io"
-func parseAuthHeader(header string) (realm, service string) {
-	// Remove "Bearer " prefix
-	header = strings.TrimPrefix(header, "Bearer ")
-
-	// Parse key="value" pairs
-	for part := range strings.SplitSeq(header, ",") {
-		part = strings.TrimSpace(part)
-		if val, ok := strings.CutPrefix(part, "realm="); ok {
-			realm = strings.Trim(val, "\"")
-		} else if val, ok := strings.CutPrefix(part, "service="); ok {
-			service = strings.Trim(val, "\"")
-		}
-	}
-
-	return realm, service
-}
-
-// doRequest makes an authenticated request to the registry.
-func (c *RegistryClient) doRequest(method, url string) (*http.Response, error) {
-	req, err := http.NewRequest(method, url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// Add auth token if we have one
-	if c.token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.token)
-	}
-
-	return c.client.Do(req)
-}
-
+// FetchManifest retrieves the image manifest from the registry.
+// The manifest contains:
+//   - Config digest (image configuration with Env, Cmd, etc.)
+//   - Layer digests (filesystem layers to download)
+//
+// Uses Docker manifest v2 schema 2 or OCI manifest format.
 func (c *RegistryClient) FetchManifest() (*ManifestV2, error) {
 	// Build manifest URL: /v2/<repo>/manifests/<tag>
 	url := fmt.Sprintf("https://%s/v2/%s/manifests/%s",
@@ -176,4 +160,38 @@ func (c *RegistryClient) FetchManifest() (*ManifestV2, error) {
 	}
 
 	return &manifest, nil
+}
+
+// parseAuthHeader extracts realm and service from WWW-Authenticate header.
+// Example: Bearer realm="https://auth.docker.io/token",service="registry.docker.io"
+func parseAuthHeader(header string) (realm, service string) {
+	// Remove "Bearer " prefix
+	header = strings.TrimPrefix(header, "Bearer ")
+
+	// Parse key="value" pairs
+	for part := range strings.SplitSeq(header, ",") {
+		part = strings.TrimSpace(part)
+		if val, ok := strings.CutPrefix(part, "realm="); ok {
+			realm = strings.Trim(val, "\"")
+		} else if val, ok := strings.CutPrefix(part, "service="); ok {
+			service = strings.Trim(val, "\"")
+		}
+	}
+
+	return realm, service
+}
+
+// doRequest makes an authenticated request to the registry.
+func (c *RegistryClient) doRequest(method, url string) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add auth token if we have one
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+
+	return c.client.Do(req)
 }
