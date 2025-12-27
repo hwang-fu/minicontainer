@@ -22,8 +22,40 @@ import (
 //
 // The layer is stored at: /var/lib/minicontainer/layers/sha256:<hash>/
 func ExtractLayer(tarballPath string) (digest string, size int64, err error) {
-	// TODO: implement
-	panic("todo")
+	// Step 1: Compute digest of the tarball file
+	// This gives us the content-addressable name for the layer
+	digest, err = computeDigest(tarballPath)
+	if err != nil {
+		return "", 0, fmt.Errorf("compute layer digest: %w", err)
+	}
+
+	// Step 2: Check if this layer is already cached
+	// Content-addressable storage means identical content = identical digest
+	if LayerExists(digest) {
+		// Layer already extracted, get its size and return
+		size, err = dirSize(LayerDir(digest))
+		if err != nil {
+			return "", 0, fmt.Errorf("get cached layer size: %w", err)
+		}
+		return digest, size, nil
+	}
+
+	// Step 3: Create the layer directory
+	layerPath := LayerDir(digest)
+	if err := os.MkdirAll(layerPath, 0o755); err != nil {
+		return "", 0, fmt.Errorf("create layer dir: %w", err)
+	}
+
+	// Step 4: Extract tarball to layer directory
+	// Use tar command for simplicity - handles .tar and .tar.gz automatically
+	size, err = extractTarball(tarballPath, layerPath)
+	if err != nil {
+		// Clean up partial extraction on failure
+		os.RemoveAll(layerPath)
+		return "", 0, fmt.Errorf("extract tarball: %w", err)
+	}
+
+	return digest, size, nil
 }
 
 // LayerExists checks if a layer with the given digest already exists.
@@ -131,4 +163,42 @@ func dirSize(path string) (int64, error) {
 	})
 
 	return size, err
+}
+
+// extractTarball extracts a tar archive to the destination directory.
+// Supports both .tar and .tar.gz/.tgz files (auto-detected by tar command).
+// Uses the system tar command for simplicity and broad format support.
+//
+// Parameters:
+//   - tarballPath: path to the .tar or .tar.gz file
+//   - destDir: directory to extract contents into (must exist)
+//
+// Returns:
+//   - size: total bytes of extracted files
+//   - error: any error during extraction
+func extractTarball(tarballPath, destDir string) (int64, error) {
+	// Use system tar command with auto-compression detection (-a flag)
+	// -x: extract
+	// -f: read from file
+	// -C: change to directory before extracting
+	//
+	// Note: GNU tar auto-detects gzip compression, so we don't need -z flag
+	cmd := exec.Command("tar", "-xf", tarballPath, "-C", destDir)
+
+	// Capture stderr for error messages
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	// Run the extraction
+	if err := cmd.Run(); err != nil {
+		return 0, fmt.Errorf("tar extract failed: %v: %s", err, stderr.String())
+	}
+
+	// Calculate total size of extracted files
+	size, err := dirSize(destDir)
+	if err != nil {
+		return 0, fmt.Errorf("calculate extracted size: %w", err)
+	}
+
+	return size, nil
 }
