@@ -191,6 +191,21 @@ func (c *RegistryClient) FetchBlob(digest string) (io.ReadCloser, int64, error) 
 	return resp.Body, resp.ContentLength, nil
 }
 
+func (c *RegistryClient) FetchConfig(digest string) (*ImageConfig, error) {
+	body, _, err := c.FetchBlob(digest)
+	if err != nil {
+		return nil, fmt.Errorf("fetch config blob: %w", err)
+	}
+	defer body.Close()
+
+	var config ImageConfig
+	if err := json.NewDecoder(body).Decode(&config); err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+
+	return &config, nil
+}
+
 // parseAuthHeader extracts realm and service from WWW-Authenticate header.
 // Example: Bearer realm="https://auth.docker.io/token",service="registry.docker.io"
 func parseAuthHeader(header string) (realm, service string) {
