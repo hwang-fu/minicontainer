@@ -1,6 +1,5 @@
 name: CI
 
-# Run on push to any branch and PRs to main
 on:
   push:
     branches:
@@ -10,8 +9,8 @@ on:
       - main
 
 jobs:
+  # Basic build check - runs on all pushes and PRs
   build:
-    # Skip if commit message contains [no ci] or [skip ci]
     if: |
       !contains(github.event.head_commit.message, '[no ci]') &&
       !contains(github.event.head_commit.message, '[skip ci]')
@@ -19,16 +18,121 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Set up Go environment
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
 
-      # Run the build and checks
       - name: Run make check
         run: make check
+
+  # Integration tests - only on PRs to main
+  integration:
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Run make check
+        run: make check
+
+      - name: Build binary
+        run: make build
+
+      - name: Test version command
+        run: |
+          ./minicontainer version | grep -q "minicontainer version"
+
+      - name: Test help/usage output
+        run: |
+          ./minicontainer 2>&1 | grep -q "Usage:"
+          ./minicontainer 2>&1 | grep -q "Commands:"
+
+      - name: Test ps command (empty list)
+        run: |
+          sudo mkdir -p /var/lib/minicontainer/containers
+          sudo ./minicontainer ps
+          sudo ./minicontainer ps -a
+          sudo ./minicontainer ps --all
+
+      - name: Test images command (empty list)
+        run: |
+          sudo mkdir -p /var/lib/minicontainer/images
+          sudo ./minicontainer images
+
+      - name: Test prune command (nothing to clean)
+        run: |
+          sudo ./minicontainer prune | grep -q "Nothing to clean"
+
+      - name: Test import command
+        run: |
+          # Create a minimal test rootfs tarball
+          mkdir -p /tmp/test-rootfs/bin
+          echo '#!/bin/sh' > /tmp/test-rootfs/bin/sh
+          chmod +x /tmp/test-rootfs/bin/sh
+          tar -C /tmp/test-rootfs -czf /tmp/test.tar.gz .
+
+          # Test import
+          sudo ./minicontainer import /tmp/test.tar.gz testimage:v1
+
+          # Verify image appears in list
+          sudo ./minicontainer images | grep -q "testimage"
+          sudo ./minicontainer images | grep -q "v1"
+
+      - name: Test images shows correct data
+        run: |
+          # Check all columns present
+          sudo ./minicontainer images | grep -q "REPOSITORY"
+          sudo ./minicontainer images | grep -q "TAG"
+          sudo ./minicontainer images | grep -q "IMAGE ID"
+          sudo ./minicontainer images | grep -q "SIZE"
+          sudo ./minicontainer images | grep -q "CREATED"
+
+      - name: Test rmi command
+        run: |
+          # Remove the test image
+          sudo ./minicontainer rmi testimage:v1
+
+          # Verify removed from list
+          ! sudo ./minicontainer images | grep -q "testimage"
+
+          # Verify layer cleaned up
+          test -z "$(ls -A /var/lib/minicontainer/layers 2>/dev/null || true)"
+
+      - name: Test stop command (container not found)
+        run: |
+          # Should fail with error for non-existent container
+          ! sudo ./minicontainer stop nonexistent 2>&1 | grep -q "error"
+
+      - name: Test rm command (container not found)
+        run: |
+          # Should fail with error for non-existent container
+          ! sudo ./minicontainer rm nonexistent 2>&1 | grep -q "error"
+
+      - name: Test rmi command (image not found)
+        run: |
+          # Should fail with error for non-existent image
+          sudo ./minicontainer rmi nonexistent:latest 2>&1 | grep -q "not found"
+
+      - name: Cleanup resources
+        if: always()
+        run: |
+          # Remove test artifacts
+          rm -rf /tmp/test-rootfs /tmp/test.tar.gz
+
+          # Clean up minicontainer directories
+          sudo rm -rf /var/lib/minicontainer
+
+          # Clean build artifacts
+          make clean
