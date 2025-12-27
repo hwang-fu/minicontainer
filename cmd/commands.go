@@ -126,6 +126,18 @@ func RunImport(tarballPath, imageRef string) {
 	fmt.Printf("Imported %s:%s (id: %s)\n", meta.Name, meta.Tag, meta.ID[:12])
 }
 
+// ResolveRootfs resolves the rootfs path from config or image reference.
+// If --rootfs is provided, uses that directly.
+// Otherwise, treats the first cmdArg as an image reference and looks it up.
+//
+// Parameters:
+//   - cfg: container config (may have RootfsPath set)
+//   - cmdArgs: command arguments (first may be image reference)
+//
+// Returns:
+//   - updated config with RootfsPath set
+//   - remaining command arguments (image reference removed if used)
+//   - error if image lookup fails
 func ResolveRootfs(cfg *ContainerConfig, cmdArgs []string) (*ContainerConfig, []string, error) {
 	// If --rootfs provided, use it directly
 	if cfg.RootfsPath != "" {

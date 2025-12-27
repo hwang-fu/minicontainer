@@ -20,29 +20,31 @@ func main() {
 
 	case "run":
 		if len(os.Args) < 3 {
-			fmt.Fprintln(os.Stderr, "usage: minicontainer run [flags] <command> [args...]")
+			fmt.Fprintln(os.Stderr, "usage: minicontainer run [flags] <image|--rootfs path> [command] [args...]")
 			os.Exit(1)
 		}
 
 		// Parse CLI flags and extract the command to run
 		cfg, cmdArgs := cmd.ParseRunFlags(os.Args[2:])
+
+		// Resolve rootfs from --rootfs flag or image reference
+		resolvedCfg, cmdArgs, err := cmd.ResolveRootfs(&cfg, cmdArgs)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
 		if len(cmdArgs) < 1 {
-			fmt.Fprintln(os.Stderr, "usage: minicontainer run [flags] <command> [args...]")
+			fmt.Fprintln(os.Stderr, "error: no command specified")
 			os.Exit(1)
 		}
 
-		if cfg.RootfsPath == "" {
-			fmt.Fprintln(os.Stderr, "error: --rootfs is required")
-			fmt.Fprintln(os.Stderr, "usage: minicontainer run --rootfs <path> [flags] <command> [args...]")
-			os.Exit(1)
-		}
-
-		if cfg.Detached {
-			container.RunDetached(cfg, cmdArgs)
-		} else if cfg.AllocateTTY {
-			container.RunWithTTY(cfg, cmdArgs)
+		if resolvedCfg.Detached {
+			container.RunDetached(*resolvedCfg, cmdArgs)
+		} else if resolvedCfg.AllocateTTY {
+			container.RunWithTTY(*resolvedCfg, cmdArgs)
 		} else {
-			container.RunWithoutTTY(cfg, cmdArgs)
+			container.RunWithoutTTY(*resolvedCfg, cmdArgs)
 		}
 
 	case "stop":

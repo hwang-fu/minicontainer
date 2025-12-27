@@ -1,5 +1,10 @@
 package image
 
+import (
+	"fmt"
+	"os"
+)
+
 // LookupImage finds an image by reference and returns the path to its root layer.
 // For single-layer images (imports), this returns the layer directory directly.
 // For multi-layer images (pulled), this would need to set up overlayfs (future).
