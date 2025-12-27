@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 )
 
 // ExtractLayer extracts a tarball to the layer directory and returns its digest.
@@ -104,4 +105,30 @@ func computeDigest(filePath string) (string, error) {
 	// hasher.Sum(nil) returns the final hash as []byte
 	// %x formats bytes as lowercase hexadecimal
 	return fmt.Sprintf("sha256:%x", hasher.Sum(nil)), nil
+}
+
+// dirSize calculates the total size of all files in a directory tree.
+// Used to report layer size after extraction.
+//
+// Parameters:
+//   - path: root directory to calculate size for
+//
+// Returns:
+//   - total size in bytes of all regular files
+func dirSize(path string) (int64, error) {
+	var size int64
+
+	// Walk the directory tree, summing file sizes
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		// Only count regular files (not directories, symlinks, etc.)
+		if info.Mode().IsRegular() {
+			size += info.Size()
+		}
+		return nil
+	})
+
+	return size, err
 }
