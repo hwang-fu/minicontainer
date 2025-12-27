@@ -1,5 +1,6 @@
 # MiniContainer
 
+[![CI](https://github.com/hwang-fu/minicontainer/actions/workflows/ci.yml/badge.svg)](https://github.com/hwang-fu/minicontainer/actions/workflows/ci.yml)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux-FCC624?style=flat&logo=linux&logoColor=black)](https://kernel.org/)
@@ -27,6 +28,7 @@ MiniContainer implements the core primitives that power Docker and other contain
 | **Filesystem** | `pivot_root`, overlayfs (COW), volume mounts, `/proc`, `/sys`, `/dev` |
 | **Networking** | Bridge (`minicontainer0`), veth pairs, IPAM, NAT, port publishing (`-p`) |
 | **Resource Limits** | Cgroups v2: memory (`--memory`), CPU (`--cpus`), pids (`--pids-limit`) |
+| **Images** | Import tarballs, content-addressable layers, `images`, `rmi` |
 | **Lifecycle** | Container IDs, state persistence, `ps`, `stop`, `rm` |
 | **Terminal** | PTY allocation (`-it`), signal forwarding |
 | **Modes** | Interactive, non-interactive, detached (`-d`) |
@@ -34,19 +36,22 @@ MiniContainer implements the core primitives that power Docker and other contain
 ### CLI Commands
 
 ```
-minicontainer run [flags] <command>   Run a container
-minicontainer ps [-a]                 List containers
-minicontainer stop <container>        Stop a running container
-minicontainer rm <container|--all>    Remove stopped containers
-minicontainer prune                   Clean stale overlay directories
-minicontainer version                 Show version
+minicontainer run [flags] <image|--rootfs> <cmd>  Run a container
+minicontainer ps [-a]                             List containers
+minicontainer stop <container>                    Stop a running container
+minicontainer rm <container|--all>                Remove stopped containers
+minicontainer import <tarball> <name[:tag]>       Import tarball as image
+minicontainer images                              List local images
+minicontainer rmi <image>                         Remove an image
+minicontainer prune                               Clean stale overlay directories
+minicontainer version                             Show version
 ```
 
 ### Run Flags
 
 | Flag | Description |
 |------|-------------|
-| `--rootfs PATH` | Container root filesystem (required) |
+| `--rootfs PATH` | Container root filesystem (optional if using image) |
 | `--name NAME` | Container name |
 | `--hostname NAME` | Container hostname |
 | `-d` | Detached mode (background) |
@@ -94,6 +99,22 @@ sudo ./minicontainer stop <id>
 # With resource limits
 sudo ./minicontainer run -it --memory 256m --cpus 0.5 --pids-limit 50 \
     --rootfs /tmp/alpine-rootfs /bin/sh
+```
+
+### 4. Using images (alternative)
+
+```bash
+# Import tarball as image
+sudo ./minicontainer import alpine-minirootfs-3.19.0-x86_64.tar.gz alpine:3.19
+
+# List images
+sudo ./minicontainer images
+
+# Run from image (no --rootfs needed!)
+sudo ./minicontainer run -it alpine:3.19 /bin/sh
+
+# Remove image
+sudo ./minicontainer rmi alpine:3.19
 ```
 
 ### Inside the container
@@ -194,6 +215,14 @@ minicontainer/
 │   └── volume.go           # Volume bind mounts
 ├── state/
 │   └── container.go        # State persistence (JSON)
+├── image/
+│   ├── storage.go          # Image/layer directory paths
+│   ├── metadata.go         # ImageMetadata struct, save/load
+│   ├── layer.go            # Layer extraction and management
+│   ├── import.go           # Tarball import
+│   ├── lookup.go           # Image lookup for run
+│   ├── list.go             # List all images
+│   └── remove.go           # Remove image and layers
 └── Makefile
 ```
 
@@ -206,7 +235,7 @@ minicontainer/
 - [x] **Phase 3**: Container lifecycle (ps, stop, rm, detached mode)
 - [x] **Phase 4**: Resource limits (cgroups v2: memory, CPU, pids)
 - [x] **Phase 5**: Networking (veth, bridge, NAT, port publishing)
-- [ ] **Phase 6**: OCI images (local tarball import)
+- [x] **Phase 6**: OCI images (import, images, rmi, run from image)
 - [ ] **Phase 7**: Registry pull (Docker Hub)
 - [ ] **Phase 8**: Polish (logs, exec, inspect)
 
