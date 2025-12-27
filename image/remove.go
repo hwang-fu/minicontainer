@@ -2,9 +2,19 @@ package image
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 )
 
+// RemoveImage removes an image by reference (name:tag or ID).
+// Deletes the image metadata and removes layers that are no longer referenced.
+//
+// Parameters:
+//   - ref: image reference ("name:tag") or image ID (full or short)
+//
+// Returns:
+//   - error if image not found or removal fails
 func RemoveImage(ref string) error {
 	// Try to find the image by name:tag first
 	name, tag := ParseImageRef(ref)
