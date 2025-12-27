@@ -1,10 +1,12 @@
 package image
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
