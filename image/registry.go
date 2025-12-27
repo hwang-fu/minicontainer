@@ -132,13 +132,8 @@ func (c *RegistryClient) Authenticate() error {
 }
 
 // FetchManifest retrieves the image manifest from the registry.
-// The manifest contains:
-//   - Config digest (image configuration with Env, Cmd, etc.)
-//   - Layer digests (filesystem layers to download)
-//
-// Uses Docker manifest v2 schema 2 or OCI manifest format.
+// Handles both direct manifests and manifest lists (multi-arch).
 func (c *RegistryClient) FetchManifest() (*ManifestV2, error) {
-	// Build manifest URL: /v2/<repo>/manifests/<tag>
 	url := fmt.Sprintf("https://%s/v2/%s/manifests/%s",
 		c.ref.Registry, c.ref.Repository, c.ref.Tag)
 
@@ -147,14 +142,14 @@ func (c *RegistryClient) FetchManifest() (*ManifestV2, error) {
 		return nil, fmt.Errorf("create manifest request: %w", err)
 	}
 
-	// Add auth token
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
 
-	// Accept both Docker and OCI manifest formats
-	// Docker v2 schema 2 is most common for Docker Hub
+	// Accept manifest list and direct manifests
 	req.Header.Set("Accept", strings.Join([]string{
+		"application/vnd.docker.distribution.manifest.list.v2+json",
+		"application/vnd.oci.image.index.v1+json",
 		"application/vnd.docker.distribution.manifest.v2+json",
 		"application/vnd.oci.image.manifest.v1+json",
 	}, ", "))
@@ -170,8 +165,40 @@ func (c *RegistryClient) FetchManifest() (*ManifestV2, error) {
 		return nil, fmt.Errorf("manifest request failed: %d: %s", resp.StatusCode, body)
 	}
 
+	// Read body for potential re-parsing
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read manifest body: %w", err)
+	}
+
+	// Check if it's a manifest list
+	contentType := resp.Header.Get("Content-Type")
+	if strings.Contains(contentType, "manifest.list") || strings.Contains(contentType, "image.index") {
+		// Parse as manifest list, find amd64/linux manifest
+		var list ManifestList
+		if err := json.Unmarshal(body, &list); err != nil {
+			return nil, fmt.Errorf("parse manifest list: %w", err)
+		}
+
+		// Find amd64/linux manifest
+		var digest string
+		for _, m := range list.Manifests {
+			if m.Platform.Architecture == "amd64" && m.Platform.OS == "linux" {
+				digest = m.Digest
+				break
+			}
+		}
+		if digest == "" {
+			return nil, fmt.Errorf("no amd64/linux manifest found")
+		}
+
+		// Fetch the actual manifest by digest
+		return c.fetchManifestByDigest(digest)
+	}
+
+	// Parse as direct manifest
 	var manifest ManifestV2
-	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
+	if err := json.Unmarshal(body, &manifest); err != nil {
 		return nil, fmt.Errorf("parse manifest: %w", err)
 	}
 
@@ -256,4 +283,39 @@ func (c *RegistryClient) doRequest(method, url string) (*http.Response, error) {
 	}
 
 	return c.client.Do(req)
+}
+
+// fetchManifestByDigest fetches a manifest by its digest.
+func (c *RegistryClient) fetchManifestByDigest(digest string) (*ManifestV2, error) {
+	url := fmt.Sprintf("https://%s/v2/%s/manifests/%s",
+		c.ref.Registry, c.ref.Repository, digest)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create manifest request: %w", err)
+	}
+
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+
+	req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch manifest by digest: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("manifest by digest failed: %d: %s", resp.StatusCode, body)
+	}
+
+	var manifest ManifestV2
+	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
+		return nil, fmt.Errorf("parse manifest: %w", err)
+	}
+
+	return &manifest, nil
 }

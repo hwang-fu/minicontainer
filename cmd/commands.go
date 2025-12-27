@@ -201,6 +201,7 @@ func RunRmi(ref string) {
 	fmt.Printf("Removed: %s\n", ref)
 }
 
+// RunPull pulls an image from a registry.
 func RunPull(ref string) {
 	meta, err := image.Pull(ref)
 	if err != nil {
