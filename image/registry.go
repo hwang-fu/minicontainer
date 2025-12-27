@@ -25,6 +25,22 @@ type ManifestV2 struct {
 	} `json:"layers"`
 }
 
+// ManifestList represents a multi-architecture manifest list.
+// Docker Hub returns this for multi-arch images like "alpine".
+type ManifestList struct {
+	SchemaVersion int    `json:"schemaVersion"`
+	MediaType     string `json:"mediaType"`
+	Manifests     []struct {
+		MediaType string `json:"mediaType"`
+		Digest    string `json:"digest"`
+		Size      int64  `json:"size"`
+		Platform  struct {
+			Architecture string `json:"architecture"`
+			OS           string `json:"os"`
+		} `json:"platform"`
+	} `json:"manifests"`
+}
+
 // ImageConfig represents the OCI image configuration.
 // Contains runtime settings like Env, Cmd, Entrypoint.
 type ImageConfig struct {
@@ -191,6 +207,8 @@ func (c *RegistryClient) FetchBlob(digest string) (io.ReadCloser, int64, error) 
 	return resp.Body, resp.ContentLength, nil
 }
 
+// FetchConfig downloads and parses the image configuration.
+// The config contains runtime settings (Env, Cmd, Entrypoint, etc.)
 func (c *RegistryClient) FetchConfig(digest string) (*ImageConfig, error) {
 	body, _, err := c.FetchBlob(digest)
 	if err != nil {
