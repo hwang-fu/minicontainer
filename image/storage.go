@@ -15,3 +15,9 @@ const (
 func ImageDir(name, tag string) string {
 	return filepath.Join(ImageBaseDir, name, tag)
 }
+
+// LayerDir returns the path where a layer's contents are extracted.
+// Example: LayerDir("sha256:abc123...") -> "/var/lib/minicontainer/layers/sha256:abc123..."
+func LayerDir(digest string) string {
+	return filepath.Join(LayerBaseDir, digest)
+}
