@@ -1,7 +1,7 @@
 # MiniContainer
 
 [![CI](https://github.com/hwang-fu/minicontainer/actions/workflows/ci.yml/badge.svg)](https://github.com/hwang-fu/minicontainer/actions/workflows/ci.yml)
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux-FCC624?style=flat&logo=linux&logoColor=black)](https://kernel.org/)
 
@@ -278,7 +278,7 @@ minicontainer/
 ## Requirements
 
 - **Linux** kernel 4.x+ (cgroups v2 recommended)
-- **Go** 1.21+
+- **Go** 1.24+
 - **Root access** (sudo) for container operations
 
 ---

@@ -91,6 +91,13 @@ func main() {
 		}
 		cmd.RunImport(os.Args[2], os.Args[3])
 
+	case "pull":
+		if len(os.Args) < 3 {
+			fmt.Fprintln(os.Stderr, "usage: minicontainer pull <image>")
+			os.Exit(1)
+		}
+		cmd.RunPull(os.Args[2])
+
 	case "init":
 		cmd.RunInit(os.Args[2:])
 
@@ -113,5 +120,6 @@ func printUsage() {
 	fmt.Println("  images   List local images")
 	fmt.Println("  rmi      Remove an image")
 	fmt.Println("  import   Import a tarball as an image")
+	fmt.Println("  pull     Pull an image from registry")
 	fmt.Println("  version  Show version")
 }
