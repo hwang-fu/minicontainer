@@ -162,6 +162,35 @@ func (c *RegistryClient) FetchManifest() (*ManifestV2, error) {
 	return &manifest, nil
 }
 
+// FetchBlob downloads a blob (layer or config) by digest.
+// Returns the blob content as a reader. Caller must close it.
+//
+// Parameters:
+//   - digest: the "sha256:..." digest of the blob
+//
+// Returns:
+//   - io.ReadCloser: blob content stream
+//   - int64: content length
+//   - error: any error during fetch
+func (c *RegistryClient) FetchBlob(digest string) (io.ReadCloser, int64, error) {
+	// Build blob URL: /v2/<repo>/blobs/<digest>
+	url := fmt.Sprintf("https://%s/v2/%s/blobs/%s",
+		c.ref.Registry, c.ref.Repository, digest)
+
+	resp, err := c.doRequest("GET", url)
+	if err != nil {
+		return nil, 0, fmt.Errorf("fetch blob: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return nil, 0, fmt.Errorf("blob request failed: %d: %s", resp.StatusCode, body)
+	}
+
+	return resp.Body, resp.ContentLength, nil
+}
+
 // parseAuthHeader extracts realm and service from WWW-Authenticate header.
 // Example: Bearer realm="https://auth.docker.io/token",service="registry.docker.io"
 func parseAuthHeader(header string) (realm, service string) {
