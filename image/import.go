@@ -1,6 +1,10 @@
 package image
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
 
 // ParseImageRef splits an image reference into name and tag.
 // If no tag is provided, defaults to "latest".
