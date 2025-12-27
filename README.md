@@ -1,5 +1,7 @@
 # MiniContainer
 
+**[English](README.md)** | [Deutsch](./docs/README.de.md) | [Français](./docs/README.fr.md) | [繁體中文](./docs/README.zh.md) | [日本語](./docs/README.jp.md)
+
 [![CI](https://github.com/hwang-fu/minicontainer/actions/workflows/ci.yml/badge.svg)](https://github.com/hwang-fu/minicontainer/actions/workflows/ci.yml)
 [![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
