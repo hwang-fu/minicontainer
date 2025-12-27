@@ -34,8 +34,19 @@ func ExtractLayer(tarballPath string) (digest string, size int64, err error) {
 // Returns:
 //   - true if layer directory exists and is non-empty
 func LayerExists(digest string) bool {
-	// TODO: implement
-	panic("todo")
+	// Get the path where this layer would be stored
+	path := LayerDir(digest)
+
+	// Stat the path to check if it exists
+	// os.Stat follows symlinks; returns error if path doesn't exist
+	info, err := os.Stat(path)
+	if err != nil {
+		// Path doesn't exist or isn't accessible
+		return false
+	}
+
+	// Verify it's actually a directory, not a file
+	return info.IsDir()
 }
 
 // RemoveLayer deletes a layer directory by its digest.
