@@ -2,7 +2,7 @@
 
 [English](../README.md) | **[Deutsch](./README.de.md)** | [Français](./README.fr.md) | [繁體中文](./README.zh.md) | [日本語](./README.jp.md)
 
-> **Hinweis:** Diese README wurde ursprünglich auf Englisch verfasst. Bei Unklarheiten konsultieren Du bitte die [englische Version](../README.md).
+> **Hinweis:** Diese README wurde ursprünglich auf Englisch verfasst. Bei Unklarheiten konsultieren bitte die [englische Version](../README.md).
 
 [![CI](https://github.com/hwang-fu/minicontainer/actions/workflows/ci.yml/badge.svg)](https://github.com/hwang-fu/minicontainer/actions/workflows/ci.yml)
 [![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev/)
@@ -37,7 +37,7 @@ Container-Technologie ist im Wesentlichen eine clevere Kombination mehrerer bere
 | Geschichtetes Dateisystem | **OverlayFS / AUFS** |
 | Root-Verzeichnis-Isolation | **chroot / pivot_root** |
 
-All diese Technologien existierten lange bevor Docker oder eine moderne Container-Laufzeit erschien. Du können sogar manuell diese Primitive zusammenfügen, um einen "armen Manns Container" zu erstellen:
+All diese Technologien existierten lange bevor Docker oder eine moderne Container-Laufzeit erschien. Du könntest sogar manuell diese Primitive zusammenfügen, um einen "armen Manns Container" zu erstellen:
 
 ```bash
 # Erstelle einen isolierten Namespace und führe bash darin aus
