@@ -204,7 +204,7 @@ make clean      # ビルド成果物をクリーンアップ
 
 ## 作者
 
-**王俊哲（Junzhe Wang）**
+**王浚哲（Junzhe Wang）**
 
 - junzhe.hwangfu@gmail.com — バグ報告、貢献
 - junzhe.wang2002@gmail.com — 仕事の機会、コラボレーション

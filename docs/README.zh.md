@@ -37,7 +37,7 @@ MiniContainer 實現了驅動 Docker 和其他容器系統的核心原語：**�
 | 分層檔案系統 | **OverlayFS / AUFS** |
 | 根目錄隔離 | **chroot / pivot_root** |
 
-這些技術在 Docker 或任何現代容器執行環境出現之前就已存在。您甚至可以手動組合這些原語來建立一個「窮人的容器」：
+這些技術在 Docker 或任何現代容器執行環境出現之前就已存在。你甚至可以手動組合這些原語來建立一個「窮人的容器」：
 
 ```bash
 # 建立隔離的命名空間並在其中執行 bash
@@ -204,7 +204,7 @@ make clean      # 清理建構產物
 
 ## 作者
 
-**王俊哲（Junzhe Wang）**
+**王浚哲 (Junzhe Wang)**
 
 - junzhe.hwangfu@gmail.com — 錯誤回報、貢獻
 - junzhe.wang2002@gmail.com — 工作機會、合作
