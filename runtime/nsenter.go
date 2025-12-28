@@ -1,9 +1,25 @@
 package runtime
 
+import (
+	"fmt"
+	"os"
+	"runtime"
+
+	"golang.org/x/sys/unix"
+)
+
 // NamespaceType represents a Linux namespace type.
 type NamespaceType struct {
 	Name string // e.g., "pid", "mnt", "net"
 	Flag int    // e.g., unix.CLONE_NEWPID
+}
+
+var execNamespaces = []NamespaceType{
+	{"ipc", unix.CLONE_NEWIPC},
+	{"uts", unix.CLONE_NEWUTS},
+	{"net", unix.CLONE_NEWNET},
+	{"pid", unix.CLONE_NEWPID},
+	{"mnt", unix.CLONE_NEWNS},
 }
 
 // EnterNamespaces enters the namespaces of the given PID.
