@@ -120,6 +120,7 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Container Commands:")
 	fmt.Println("  run      Create and run a container")
+	fmt.Println("  exec     Execute a command in a running container")
 	fmt.Println("  stop     Stop a running container")
 	fmt.Println("  rm       Remove a stopped container")
 	fmt.Println("  ps       List containers")
