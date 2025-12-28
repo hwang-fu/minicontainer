@@ -132,6 +132,7 @@ func printUsage() {
 	fmt.Println("  rm       Remove a stopped container")
 	fmt.Println("  ps       List containers")
 	fmt.Println("  logs     Fetch the logs of a container")
+	fmt.Println("  inspect  Display detailed container information")
 	fmt.Println()
 	fmt.Println("Image Commands:")
 	fmt.Println("  images   List local images")
