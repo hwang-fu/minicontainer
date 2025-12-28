@@ -12,6 +12,7 @@ import (
 	"github.com/hwang-fu/minicontainer/cgroup"
 	"github.com/hwang-fu/minicontainer/fs"
 	"github.com/hwang-fu/minicontainer/image"
+	"github.com/hwang-fu/minicontainer/runtime"
 	"github.com/hwang-fu/minicontainer/state"
 )
 
