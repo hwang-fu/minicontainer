@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/hwang-fu/minicontainer/cgroup"
@@ -58,6 +59,13 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 		return nil, fmt.Errorf("save state: %w", err)
 	}
 
+	// Create log file for stdout/stderr capture
+	logPath := filepath.Join(state.ContainerDir(containerID), "container.log")
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		return nil, fmt.Errorf("create log file: %w", err)
+	}
+
 	cr := &ContainerRuntime{
 		ID:           containerID,
 		Name:         containerName,
@@ -65,6 +73,7 @@ func NewContainerRuntime(cfg cmd.ContainerConfig, cmdArgs []string) (*ContainerR
 		CmdArgs:      cmdArgs,
 		State:        containerState,
 		ActualRootfs: cfg.RootfsPath,
+		LogFile:      logFile,
 	}
 
 	// Ensure bridge exists for container networking

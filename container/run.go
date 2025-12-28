@@ -74,7 +74,8 @@ func RunWithTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 	slave.Close() // Close slave in parent after child starts
 
 	// Relay I/O between terminal and PTY
-	go io.Copy(os.Stdout, master)
+	// For TTY mode, we only have one stream (the PTY mixes stdout/stderr), so we label it "stdout".
+	go io.Copy(io.MultiWriter(os.Stdout, NewTimestampedLogWriter(cr.LogFile, "stdout")), master)
 	if cfg.Interactive {
 		go io.Copy(master, os.Stdin)
 	}
@@ -100,8 +101,8 @@ func RunWithoutTTY(cfg cmd.ContainerConfig, cmdArgs []string) {
 	if cfg.Interactive {
 		execCmd.Stdin = os.Stdin
 	}
-	execCmd.Stdout = os.Stdout
-	execCmd.Stderr = os.Stderr
+	execCmd.Stdout = io.MultiWriter(os.Stdout, NewTimestampedLogWriter(cr.LogFile, "stdout"))
+	execCmd.Stderr = io.MultiWriter(os.Stderr, NewTimestampedLogWriter(cr.LogFile, "stderr"))
 
 	if err := execCmd.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -149,8 +150,8 @@ func RunDetached(cfg cmd.ContainerConfig, cmdArgs []string) {
 	// Build command for detached mode (no stdin/stdout)
 	execCmd := cr.BuildCommand(false)
 	execCmd.Stdin = nil
-	execCmd.Stdout = nil
-	execCmd.Stderr = nil
+	execCmd.Stdout = NewTimestampedLogWriter(cr.LogFile, "stdout")
+	execCmd.Stderr = NewTimestampedLogWriter(cr.LogFile, "stderr")
 
 	if err := execCmd.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)

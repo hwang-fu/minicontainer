@@ -17,6 +17,7 @@ type TimestampedLogWriter struct {
 	mu     sync.Mutex
 }
 
+// NewTimestampedLogWriter creates a writer that prefixes lines with timestamp and stream.
 func NewTimestampedLogWriter(w io.Writer, stream string) *TimestampedLogWriter {
 	return &TimestampedLogWriter{
 		writer: w,
