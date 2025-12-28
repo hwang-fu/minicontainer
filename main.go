@@ -15,6 +15,15 @@ func main() {
 	}
 
 	switch os.Args[1] {
+
+	case "help", "--help", "-h":
+		printUsage()
+		os.Exit(0)
+
+	case "--version", "-v":
+		fmt.Println("minicontainer version 0.1.0")
+		os.Exit(0)
+
 	case "version":
 		fmt.Println("minicontainer version 0.1.0")
 
@@ -150,4 +159,71 @@ func printUsage() {
 	fmt.Println("Other Commands:")
 	fmt.Println("  prune    Remove stale overlay directories")
 	fmt.Println("  version  Show version information")
+}
+
+func printCommandHelp(command string) {
+	switch command {
+	case "run":
+		fmt.Println("Usage: minicontainer run [options] <image|--rootfs path> <command> [args...]")
+		fmt.Println()
+		fmt.Println("Create and run a container")
+		fmt.Println()
+		fmt.Println("Options:")
+		fmt.Println("  --rootfs PATH         Container root filesystem")
+		fmt.Println("  --name NAME           Container name")
+		fmt.Println("  --hostname NAME       Container hostname")
+		fmt.Println("  -d, --detach          Run in background")
+		fmt.Println("  -i, --interactive     Keep stdin open")
+		fmt.Println("  -t, --tty             Allocate pseudo-TTY")
+		fmt.Println("  -e, --env KEY=VAL     Set environment variable")
+		fmt.Println("  -v, --volume SRC:DST  Bind mount volume")
+		fmt.Println("  -p, --publish H:C     Publish port (host:container)")
+		fmt.Println("  --memory SIZE         Memory limit (e.g., 256m, 1g)")
+		fmt.Println("  --cpus N              CPU limit (e.g., 0.5, 2)")
+		fmt.Println("  --pids-limit N        Max number of processes")
+	case "exec":
+		fmt.Println("Usage: minicontainer exec <container> <command> [args...]")
+		fmt.Println()
+		fmt.Println("Execute a command in a running container")
+	case "stop":
+		fmt.Println("Usage: minicontainer stop <container>")
+		fmt.Println()
+		fmt.Println("Stop a running container")
+	case "rm":
+		fmt.Println("Usage: minicontainer rm <container>")
+		fmt.Println("       minicontainer rm -a|--all")
+		fmt.Println()
+		fmt.Println("Remove a stopped container")
+	case "ps":
+		fmt.Println("Usage: minicontainer ps [-a|--all]")
+		fmt.Println()
+		fmt.Println("List containers (default: running only)")
+	case "logs":
+		fmt.Println("Usage: minicontainer logs <container>")
+		fmt.Println()
+		fmt.Println("Fetch the logs of a container")
+	case "inspect":
+		fmt.Println("Usage: minicontainer inspect <container>")
+		fmt.Println()
+		fmt.Println("Display detailed container information as JSON")
+	case "pull":
+		fmt.Println("Usage: minicontainer pull <image>")
+		fmt.Println()
+		fmt.Println("Pull an image from a registry")
+	case "images":
+		fmt.Println("Usage: minicontainer images")
+		fmt.Println()
+		fmt.Println("List local images")
+	case "rmi":
+		fmt.Println("Usage: minicontainer rmi <image>")
+		fmt.Println()
+		fmt.Println("Remove an image")
+	case "import":
+		fmt.Println("Usage: minicontainer import <tarball> <name[:tag]>")
+		fmt.Println()
+		fmt.Println("Import a tarball as an image")
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command)
+		printUsage()
+	}
 }
