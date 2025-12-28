@@ -98,6 +98,13 @@ func main() {
 		}
 		cmd.RunImport(os.Args[2], os.Args[3])
 
+	case "inspect":
+		if len(os.Args) < 3 {
+			fmt.Fprintln(os.Stderr, "usage: minicontainer inspect <container>")
+			os.Exit(1)
+		}
+		cmd.RunInspect(os.Args[2])
+
 	case "pull":
 		if len(os.Args) < 3 {
 			fmt.Fprintln(os.Stderr, "usage: minicontainer pull <image>")
