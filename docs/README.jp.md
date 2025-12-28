@@ -69,23 +69,33 @@ unshare --mount --uts --ipc --net --pid --fork bash
 | **ネットワーク** | ブリッジ（`minicontainer0`）、veth ペア、IPAM、NAT、ポート公開（`-p`） |
 | **リソース制限** | Cgroups v2：メモリ（`--memory`）、CPU（`--cpus`）、プロセス数（`--pids-limit`） |
 | **イメージ** | Docker Hub からのプル、tarball インポート、コンテンツアドレッサブルレイヤー |
-| **ライフサイクル** | コンテナ ID、状態の永続化、`ps`、`stop`、`rm` |
+| **ライフサイクル** | コンテナ ID、状態の永続化、`ps`、`stop`、`rm`、`logs`、`exec`、`inspect` |
 | **ターミナル** | PTY 割り当て（`-it`）、シグナル転送 |
 | **モード** | 対話型、非対話型、デタッチ（`-d`） |
 
 ### CLI コマンド
 
 ```
-minicontainer run [flags] <image|--rootfs> <cmd>  コンテナを実行
-minicontainer pull <image>                        レジストリからイメージをプル
-minicontainer ps [-a]                             コンテナ一覧
-minicontainer stop <container>                    実行中のコンテナを停止
-minicontainer rm <container|--all>                停止したコンテナを削除
-minicontainer import <tarball> <name[:tag]>       tarball をイメージとしてインポート
-minicontainer images                              ローカルイメージ一覧
-minicontainer rmi <image>                         イメージを削除
-minicontainer prune                               古い overlay ディレクトリをクリーンアップ
-minicontainer version                             バージョンを表示
+コンテナコマンド：
+  run [flags] <image|--rootfs> <cmd>    コンテナを作成して実行
+  exec <container> <command>            実行中のコンテナでコマンドを実行
+  stop <container>                      実行中のコンテナを停止
+  rm <container|--all>                  停止したコンテナを削除
+  ps [-a]                               コンテナ一覧
+  logs <container>                      コンテナのログを取得
+  inspect <container>                   コンテナの詳細情報を表示
+
+イメージコマンド：
+  images                                ローカルイメージ一覧
+  pull <image>                          レジストリからイメージをプル
+  import <tarball> <name[:tag]>         tarball をイメージとしてインポート
+  rmi <image>                           イメージを削除
+
+その他のコマンド：
+  prune                                 古い overlay ディレクトリをクリーンアップ
+  version                               バージョン情報を表示
+
+'minicontainer help <コマンド>' でコマンドの詳細を表示。
 ```
 
 ### Run オプション
@@ -167,19 +177,6 @@ sudo ./minicontainer import alpine-minirootfs-3.19.0-x86_64.tar.gz alpine:3.19
 # インポートしたイメージから実行
 sudo ./minicontainer run -it alpine:3.19 /bin/sh
 ```
-
----
-
-## ロードマップ
-
-- [x] **フェーズ 1**：最小限の分離（名前空間、chroot）
-- [x] **フェーズ 2**：適切なファイルシステム（pivot_root、overlayfs、ボリューム）
-- [x] **フェーズ 3**：コンテナライフサイクル（ps、stop、rm、デタッチモード）
-- [x] **フェーズ 4**：リソース制限（cgroups v2：メモリ、CPU、プロセス数）
-- [x] **フェーズ 5**：ネットワーク（veth、ブリッジ、NAT、ポート公開）
-- [x] **フェーズ 6**：OCI イメージ（インポート、イメージ一覧、削除、イメージから実行）
-- [x] **フェーズ 7**：レジストリプル（Docker Hub、マルチアーキテクチャサポート）
-- [ ] **フェーズ 8**：仕上げ（logs、exec、inspect）
 
 ---
 

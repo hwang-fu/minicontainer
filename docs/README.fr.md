@@ -69,23 +69,33 @@ C'est aussi pourquoi les conteneurs ne fonctionnent nativement que sur Linux —
 | **Réseau** | Bridge (`minicontainer0`), paires veth, IPAM, NAT, publication de ports (`-p`) |
 | **Limites de ressources** | Cgroups v2 : mémoire (`--memory`), CPU (`--cpus`), pids (`--pids-limit`) |
 | **Images** | Pull depuis Docker Hub, import de tarballs, couches adressables par contenu |
-| **Cycle de vie** | IDs de conteneurs, persistance d'état, `ps`, `stop`, `rm` |
+| **Cycle de vie** | IDs de conteneurs, persistance d'état, `ps`, `stop`, `rm`, `logs`, `exec`, `inspect` |
 | **Terminal** | Allocation PTY (`-it`), transfert de signaux |
 | **Modes** | Interactif, non-interactif, détaché (`-d`) |
 
 ### Commandes CLI
 
 ```
-minicontainer run [flags] <image|--rootfs> <cmd>  Exécuter un conteneur
-minicontainer pull <image>                        Récupérer une image depuis un registre
-minicontainer ps [-a]                             Lister les conteneurs
-minicontainer stop <container>                    Arrêter un conteneur en cours
-minicontainer rm <container|--all>                Supprimer les conteneurs arrêtés
-minicontainer import <tarball> <name[:tag]>       Importer un tarball comme image
-minicontainer images                              Lister les images locales
-minicontainer rmi <image>                         Supprimer une image
-minicontainer prune                               Nettoyer les répertoires overlay obsolètes
-minicontainer version                             Afficher la version
+Commandes conteneur :
+  run [flags] <image|--rootfs> <cmd>    Créer et exécuter un conteneur
+  exec <container> <command>            Exécuter une commande dans un conteneur
+  stop <container>                      Arrêter un conteneur en cours
+  rm <container|--all>                  Supprimer un conteneur arrêté
+  ps [-a]                               Lister les conteneurs
+  logs <container>                      Récupérer les logs d'un conteneur
+  inspect <container>                   Afficher les informations détaillées
+
+Commandes image :
+  images                                Lister les images locales
+  pull <image>                          Récupérer une image depuis un registre
+  import <tarball> <name[:tag]>         Importer un tarball comme image
+  rmi <image>                           Supprimer une image
+
+Autres commandes :
+  prune                                 Nettoyer les répertoires overlay obsolètes
+  version                               Afficher les informations de version
+
+Exécutez 'minicontainer help <commande>' pour plus d'informations sur une commande.
 ```
 
 ### Options de run
@@ -167,19 +177,6 @@ sudo ./minicontainer import alpine-minirootfs-3.19.0-x86_64.tar.gz alpine:3.19
 # Exécuter depuis l'image importée
 sudo ./minicontainer run -it alpine:3.19 /bin/sh
 ```
-
----
-
-## Feuille de route
-
-- [x] **Phase 1** : Isolation minimale (namespaces, chroot)
-- [x] **Phase 2** : Système de fichiers approprié (pivot_root, overlayfs, volumes)
-- [x] **Phase 3** : Cycle de vie des conteneurs (ps, stop, rm, mode détaché)
-- [x] **Phase 4** : Limites de ressources (cgroups v2 : mémoire, CPU, pids)
-- [x] **Phase 5** : Réseau (veth, bridge, NAT, publication de ports)
-- [x] **Phase 6** : Images OCI (import, images, rmi, exécution depuis image)
-- [x] **Phase 7** : Pull depuis registre (Docker Hub, support multi-arch)
-- [ ] **Phase 8** : Finitions (logs, exec, inspect)
 
 ---
 

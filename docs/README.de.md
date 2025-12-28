@@ -69,23 +69,33 @@ Dies ist auch der Grund, warum Container nur nativ auf Linux laufen — auf macO
 | **Netzwerk** | Bridge (`minicontainer0`), Veth-Paare, IPAM, NAT, Port-Publishing (`-p`) |
 | **Ressourcenlimits** | Cgroups v2: Speicher (`--memory`), CPU (`--cpus`), Pids (`--pids-limit`) |
 | **Images** | Pull von Docker Hub, Tarball-Import, inhaltsadressierbare Layer |
-| **Lebenszyklus** | Container-IDs, Zustandspersistenz, `ps`, `stop`, `rm` |
+| **Lebenszyklus** | Container-IDs, Zustandspersistenz, `ps`, `stop`, `rm`, `logs`, `exec`, `inspect` |
 | **Terminal** | PTY-Allokation (`-it`), Signalweiterleitung |
 | **Modi** | Interaktiv, nicht-interaktiv, abgetrennt (`-d`) |
 
 ### CLI-Befehle
 
 ```
-minicontainer run [flags] <image|--rootfs> <cmd>  Container ausführen
-minicontainer pull <image>                        Image von Registry ziehen
-minicontainer ps [-a]                             Container auflisten
-minicontainer stop <container>                    Laufenden Container stoppen
-minicontainer rm <container|--all>                Gestoppte Container entfernen
-minicontainer import <tarball> <name[:tag]>       Tarball als Image importieren
-minicontainer images                              Lokale Images auflisten
-minicontainer rmi <image>                         Image entfernen
-minicontainer prune                               Veraltete Overlay-Verzeichnisse bereinigen
-minicontainer version                             Version anzeigen
+Container-Befehle:
+  run [flags] <image|--rootfs> <cmd>    Container erstellen und ausführen
+  exec <container> <command>            Befehl in laufendem Container ausführen
+  stop <container>                      Laufenden Container stoppen
+  rm <container|--all>                  Gestoppten Container entfernen
+  ps [-a]                               Container auflisten
+  logs <container>                      Container-Logs abrufen
+  inspect <container>                   Detaillierte Container-Informationen anzeigen
+
+Image-Befehle:
+  images                                Lokale Images auflisten
+  pull <image>                          Image von Registry ziehen
+  import <tarball> <name[:tag]>         Tarball als Image importieren
+  rmi <image>                           Image entfernen
+
+Andere Befehle:
+  prune                                 Veraltete Overlay-Verzeichnisse bereinigen
+  version                               Versionsinformationen anzeigen
+
+Führe 'minicontainer help <befehl>' für mehr Informationen zu einem Befehl aus.
 ```
 
 ### Run-Flags
@@ -167,19 +177,6 @@ sudo ./minicontainer import alpine-minirootfs-3.19.0-x86_64.tar.gz alpine:3.19
 # Vom importierten Image ausführen
 sudo ./minicontainer run -it alpine:3.19 /bin/sh
 ```
-
----
-
-## Roadmap
-
-- [x] **Phase 1**: Minimale Isolation (Namespaces, Chroot)
-- [x] **Phase 2**: Korrektes Dateisystem (pivot_root, Overlayfs, Volumes)
-- [x] **Phase 3**: Container-Lebenszyklus (ps, stop, rm, abgetrennter Modus)
-- [x] **Phase 4**: Ressourcenlimits (Cgroups v2: Speicher, CPU, Pids)
-- [x] **Phase 5**: Netzwerk (Veth, Bridge, NAT, Port-Publishing)
-- [x] **Phase 6**: OCI-Images (Import, Images, Rmi, Ausführung von Image)
-- [x] **Phase 7**: Registry-Pull (Docker Hub, Multi-Arch-Unterstützung)
-- [ ] **Phase 8**: Feinschliff (Logs, Exec, Inspect)
 
 ---
 

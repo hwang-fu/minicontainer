@@ -69,23 +69,33 @@ unshare --mount --uts --ipc --net --pid --fork bash
 | **網路** | 網橋（`minicontainer0`）、veth 配對、IPAM、NAT、連接埠發布（`-p`） |
 | **資源限制** | Cgroups v2：記憶體（`--memory`）、CPU（`--cpus`）、行程數（`--pids-limit`） |
 | **映像** | 從 Docker Hub 拉取、匯入 tarball、內容定址層 |
-| **生命週期** | 容器 ID、狀態持久化、`ps`、`stop`、`rm` |
+| **生命週期** | 容器 ID、狀態持久化、`ps`、`stop`、`rm`、`logs`、`exec`、`inspect` |
 | **終端機** | PTY 分配（`-it`）、訊號轉發 |
 | **模式** | 互動式、非互動式、分離式（`-d`） |
 
 ### CLI 命令
 
 ```
-minicontainer run [flags] <image|--rootfs> <cmd>  執行容器
-minicontainer pull <image>                        從登錄中心拉取映像
-minicontainer ps [-a]                             列出容器
-minicontainer stop <container>                    停止執行中的容器
-minicontainer rm <container|--all>                移除已停止的容器
-minicontainer import <tarball> <name[:tag]>       將 tarball 匯入為映像
-minicontainer images                              列出本地映像
-minicontainer rmi <image>                         移除映像
-minicontainer prune                               清理過期的 overlay 目錄
-minicontainer version                             顯示版本
+容器命令：
+  run [flags] <image|--rootfs> <cmd>    建立並執行容器
+  exec <container> <command>            在執行中的容器內執行命令
+  stop <container>                      停止執行中的容器
+  rm <container|--all>                  移除已停止的容器
+  ps [-a]                               列出容器
+  logs <container>                      取得容器日誌
+  inspect <container>                   顯示容器詳細資訊
+
+映像命令：
+  images                                列出本地映像
+  pull <image>                          從登錄中心拉取映像
+  import <tarball> <name[:tag]>         將 tarball 匯入為映像
+  rmi <image>                           移除映像
+
+其他命令：
+  prune                                 清理過期的 overlay 目錄
+  version                               顯示版本資訊
+
+執行 'minicontainer help <命令>' 以取得更多命令資訊。
 ```
 
 ### Run 選項
@@ -167,19 +177,6 @@ sudo ./minicontainer import alpine-minirootfs-3.19.0-x86_64.tar.gz alpine:3.19
 # 從匯入的映像執行
 sudo ./minicontainer run -it alpine:3.19 /bin/sh
 ```
-
----
-
-## 開發路線圖
-
-- [x] **階段 1**：最小隔離（命名空間、chroot）
-- [x] **階段 2**：完整檔案系統（pivot_root、overlayfs、卷宗）
-- [x] **階段 3**：容器生命週期（ps、stop、rm、分離模式）
-- [x] **階段 4**：資源限制（cgroups v2：記憶體、CPU、行程數）
-- [x] **階段 5**：網路（veth、網橋、NAT、連接埠發布）
-- [x] **階段 6**：OCI 映像（匯入、映像列表、移除、從映像執行）
-- [x] **階段 7**：登錄中心拉取（Docker Hub、多架構支援）
-- [ ] **階段 8**：完善（logs、exec、inspect）
 
 ---
 
