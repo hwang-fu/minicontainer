@@ -67,23 +67,29 @@ This is also why containers only run natively on Linux — on macOS and Windows,
 | **Networking** | Bridge (`minicontainer0`), veth pairs, IPAM, NAT, port publishing (`-p`) |
 | **Resource Limits** | Cgroups v2: memory (`--memory`), CPU (`--cpus`), pids (`--pids-limit`) |
 | **Images** | Pull from Docker Hub, import tarballs, content-addressable layers |
-| **Lifecycle** | Container IDs, state persistence, `ps`, `stop`, `rm` |
+| **Lifecycle** | Container IDs, state persistence, `ps`, `stop`, `rm`, `logs` |
 | **Terminal** | PTY allocation (`-it`), signal forwarding |
 | **Modes** | Interactive, non-interactive, detached (`-d`) |
 
 ### CLI Commands
 
 ```
-minicontainer run [flags] <image|--rootfs> <cmd>  Run a container
-minicontainer pull <image>                        Pull image from registry
-minicontainer ps [-a]                             List containers
-minicontainer stop <container>                    Stop a running container
-minicontainer rm <container|--all>                Remove stopped containers
-minicontainer import <tarball> <name[:tag]>       Import tarball as image
-minicontainer images                              List local images
-minicontainer rmi <image>                         Remove an image
-minicontainer prune                               Clean stale overlay directories
-minicontainer version                             Show version
+Container Commands:
+  run [flags] <image|--rootfs> <cmd>    Create and run a container
+  stop <container>                      Stop a running container
+  rm <container|--all>                  Remove a stopped container
+  ps [-a]                               List containers
+  logs <container>                      Fetch the logs of a container
+
+Image Commands:
+  images                                List local images
+  pull <image>                          Pull an image from a registry
+  import <tarball> <name[:tag]>         Import a tarball as an image
+  rmi <image>                           Remove an image
+
+Other Commands:
+  prune                                 Remove stale overlay directories
+  version                               Show version information
 ```
 
 ### Run Flags
@@ -244,6 +250,7 @@ minicontainer/
 │   └── commands.go         # stop, rm, ps, prune commands
 ├── container/
 │   ├── id.go               # Container ID generation (SHA256)
+│   ├── log.go              # Timestamped log writer
 │   ├── runtime.go          # ContainerRuntime (shared lifecycle)
 │   └── run.go              # Run modes (TTY, non-TTY, detached)
 ├── cgroup/
@@ -277,19 +284,6 @@ minicontainer/
 │   └── pull.go             # Pull images from registries
 └── Makefile
 ```
-
----
-
-## Roadmap
-
-- [x] **Phase 1**: Minimal isolation (namespaces, chroot)
-- [x] **Phase 2**: Proper filesystem (pivot_root, overlayfs, volumes)
-- [x] **Phase 3**: Container lifecycle (ps, stop, rm, detached mode)
-- [x] **Phase 4**: Resource limits (cgroups v2: memory, CPU, pids)
-- [x] **Phase 5**: Networking (veth, bridge, NAT, port publishing)
-- [x] **Phase 6**: OCI images (import, images, rmi, run from image)
-- [x] **Phase 7**: Registry pull (Docker Hub, multi-arch support)
-- [ ] **Phase 8**: Polish (logs, exec, inspect)
 
 ---
 
