@@ -98,6 +98,13 @@ func main() {
 		}
 		cmd.RunPull(os.Args[2])
 
+	case "logs":
+		if len(os.Args) < 3 {
+			fmt.Fprintln(os.Stderr, "usage: minicontainer logs <container>")
+			os.Exit(1)
+		}
+		cmd.RunLogs(os.Args[2])
+
 	case "init":
 		cmd.RunInit(os.Args[2:])
 
@@ -111,15 +118,20 @@ func main() {
 func printUsage() {
 	fmt.Println("Usage: minicontainer <command> [options]")
 	fmt.Println()
-	fmt.Println("Commands:")
-	fmt.Println("  run      Run a container")
+	fmt.Println("Container Commands:")
+	fmt.Println("  run      Create and run a container")
 	fmt.Println("  stop     Stop a running container")
 	fmt.Println("  rm       Remove a stopped container")
 	fmt.Println("  ps       List containers")
-	fmt.Println("  prune    Remove stale overlay directories")
+	fmt.Println("  logs     Fetch the logs of a container")
+	fmt.Println()
+	fmt.Println("Image Commands:")
 	fmt.Println("  images   List local images")
-	fmt.Println("  rmi      Remove an image")
+	fmt.Println("  pull     Pull an image from a registry")
 	fmt.Println("  import   Import a tarball as an image")
-	fmt.Println("  pull     Pull an image from registry")
-	fmt.Println("  version  Show version")
+	fmt.Println("  rmi      Remove an image")
+	fmt.Println()
+	fmt.Println("Other Commands:")
+	fmt.Println("  prune    Remove stale overlay directories")
+	fmt.Println("  version  Show version information")
 }
