@@ -17,7 +17,11 @@ func main() {
 	switch os.Args[1] {
 
 	case "help", "--help", "-h":
-		printUsage()
+		if len(os.Args) >= 3 {
+			printCommandHelp(os.Args[2])
+		} else {
+			printUsage()
+		}
 		os.Exit(0)
 
 	case "--version", "-v":
@@ -159,6 +163,8 @@ func printUsage() {
 	fmt.Println("Other Commands:")
 	fmt.Println("  prune    Remove stale overlay directories")
 	fmt.Println("  version  Show version information")
+	fmt.Println()
+	fmt.Println("Run 'minicontainer help <command>' for more information on a command.")
 }
 
 func printCommandHelp(command string) {
