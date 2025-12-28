@@ -211,6 +211,29 @@ func RunPull(ref string) {
 	fmt.Printf("Pulled: %s:%s (%s)\n", meta.Name, meta.Tag, meta.ID[:12])
 }
 
+// RunLogs displays the logs from a container.
+// Reads from /var/lib/minicontainer/containers/<id>/container.log
+func RunLogs(idOrName string) {
+	cs, err := state.FindContainer(idOrName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	logPath := filepath.Join(state.ContainerDir(cs.ID), "container.log")
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// No logs yet - that's okay, just exit silently
+			return
+		}
+		fmt.Fprintf(os.Stderr, "error reading logs: %v\n", err)
+		os.Exit(1)
+	}
+
+	os.Stdout.Write(data)
+}
+
 // formatSize converts bytes to human-readable format (e.g., "3.2 MB").
 func formatSize(bytes int64) string {
 	const (
