@@ -98,6 +98,13 @@ func main() {
 		}
 		cmd.RunImport(os.Args[2], os.Args[3])
 
+	case "inspect":
+		if len(os.Args) < 3 {
+			fmt.Fprintln(os.Stderr, "usage: minicontainer inspect <container>")
+			os.Exit(1)
+		}
+		cmd.RunInspect(os.Args[2])
+
 	case "pull":
 		if len(os.Args) < 3 {
 			fmt.Fprintln(os.Stderr, "usage: minicontainer pull <image>")
@@ -132,6 +139,7 @@ func printUsage() {
 	fmt.Println("  rm       Remove a stopped container")
 	fmt.Println("  ps       List containers")
 	fmt.Println("  logs     Fetch the logs of a container")
+	fmt.Println("  inspect  Display detailed container information")
 	fmt.Println()
 	fmt.Println("Image Commands:")
 	fmt.Println("  images   List local images")
