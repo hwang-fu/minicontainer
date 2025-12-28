@@ -28,6 +28,7 @@ type ContainerRuntime struct {
 	VethHost       string                // Host-side veth interface name
 	VethContainer  string                // Container-side veth interface name (before move)
 	ContainerIP    string                // Container's allocated IP address
+	LogFile        *os.File              // Log file for container stdout/stderr
 }
 
 // NewContainerRuntime initializes a container: generates ID, creates state, sets up overlay.
