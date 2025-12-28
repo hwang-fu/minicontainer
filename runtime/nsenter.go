@@ -14,6 +14,8 @@ type NamespaceType struct {
 	Flag int    // e.g., unix.CLONE_NEWPID
 }
 
+// Namespaces to enter when exec'ing into a container.
+// Order matters: some namespaces depend on others.
 var execNamespaces = []NamespaceType{
 	{"ipc", unix.CLONE_NEWIPC},
 	{"uts", unix.CLONE_NEWUTS},

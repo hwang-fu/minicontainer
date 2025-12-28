@@ -12,7 +12,6 @@ import (
 	"github.com/hwang-fu/minicontainer/cgroup"
 	"github.com/hwang-fu/minicontainer/fs"
 	"github.com/hwang-fu/minicontainer/image"
-	"github.com/hwang-fu/minicontainer/runtime"
 	"github.com/hwang-fu/minicontainer/state"
 )
 
@@ -238,7 +237,7 @@ func RunLogs(idOrName string) {
 }
 
 // RunExec executes a command inside a running container's namespaces.
-// Uses setns() to enter the container's existing namespaces.
+// Uses nsenter to enter the container's existing namespaces.
 func RunExec(args []string) {
 	if len(args) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: minicontainer exec <container> <command> [args...]")
@@ -260,22 +259,28 @@ func RunExec(args []string) {
 		os.Exit(1)
 	}
 
-	// Enter the container's namespaces
-	if err := runtime.EnterNamespaces(cs.PID); err != nil {
-		fmt.Fprintf(os.Stderr, "error entering namespaces: %v\n", err)
-		os.Exit(1)
+	// Use nsenter to enter all namespaces of the container
+	// -t PID: target process
+	// -m: mount namespace
+	// -u: UTS namespace
+	// -i: IPC namespace
+	// -n: network namespace
+	// -p: PID namespace
+	pid := fmt.Sprintf("%d", cs.PID)
+	nsenterArgs := []string{
+		"-t", pid,
+		"-m", "-u", "-i", "-n", "-p",
+		"--",
 	}
+	nsenterArgs = append(nsenterArgs, execCmd...)
 
-	// Execute the command inside the container
-	// Use syscall.Exec to replace this process with the command
-	binary, err := exec.LookPath(execCmd[0])
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: command not found: %s\n", execCmd[0])
-		os.Exit(1)
-	}
+	cmd := exec.Command("nsenter", nsenterArgs...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
-	if err := syscall.Exec(binary, execCmd, os.Environ()); err != nil {
-		fmt.Fprintf(os.Stderr, "error executing command: %v\n", err)
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
