@@ -67,7 +67,7 @@ This is also why containers only run natively on Linux — on macOS and Windows,
 | **Networking** | Bridge (`minicontainer0`), veth pairs, IPAM, NAT, port publishing (`-p`) |
 | **Resource Limits** | Cgroups v2: memory (`--memory`), CPU (`--cpus`), pids (`--pids-limit`) |
 | **Images** | Pull from Docker Hub, import tarballs, content-addressable layers |
-| **Lifecycle** | Container IDs, state persistence, `ps`, `stop`, `rm`, `logs` |
+| **Lifecycle** | Container IDs, state persistence, `ps`, `stop`, `rm`, `logs`, `exec`, `inspect` |
 | **Terminal** | PTY allocation (`-it`), signal forwarding |
 | **Modes** | Interactive, non-interactive, detached (`-d`) |
 
@@ -76,10 +76,12 @@ This is also why containers only run natively on Linux — on macOS and Windows,
 ```
 Container Commands:
   run [flags] <image|--rootfs> <cmd>    Create and run a container
+  exec <container> <command>            Execute a command in a running container
   stop <container>                      Stop a running container
   rm <container|--all>                  Remove a stopped container
   ps [-a]                               List containers
   logs <container>                      Fetch the logs of a container
+  inspect <container>                   Display detailed container information
 
 Image Commands:
   images                                List local images
@@ -90,6 +92,8 @@ Image Commands:
 Other Commands:
   prune                                 Remove stale overlay directories
   version                               Show version information
+
+Run 'minicontainer help <command>' for more information on a command.
 ```
 
 ### Run Flags
@@ -263,7 +267,8 @@ minicontainer/
 │   ├── nat.go              # NAT/masquerade for internet access
 │   └── port.go             # Port publishing (iptables DNAT)
 ├── runtime/
-│   └── pty.go              # PTY allocation, raw terminal mode
+│   ├── pty.go              # PTY allocation, raw terminal mode
+│   └── nsenter.go          # Namespace entry helpers
 ├── fs/
 │   ├── cleanup.go          # Stale overlay cleanup
 │   ├── dev.go              # /dev tmpfs and device nodes
