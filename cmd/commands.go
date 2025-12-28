@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -238,8 +239,6 @@ func RunLogs(idOrName string) {
 // RunExec executes a command inside a running container's namespaces.
 // Uses setns() to enter the container's existing namespaces.
 func RunExec(args []string) {
-	// For now, simple parsing: first arg is container, rest is command
-	// TODO: Add -it flag support later
 	if len(args) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: minicontainer exec <container> <command> [args...]")
 		os.Exit(1)
@@ -260,8 +259,24 @@ func RunExec(args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Entering container %s (PID %d) to run: %v\n", cs.Name, cs.PID, execCmd)
-	// TODO: Implement namespace entry and command execution
+	// Enter the container's namespaces
+	if err := runtime.EnterNamespaces(cs.PID); err != nil {
+		fmt.Fprintf(os.Stderr, "error entering namespaces: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Execute the command inside the container
+	// Use syscall.Exec to replace this process with the command
+	binary, err := exec.LookPath(execCmd[0])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: command not found: %s\n", execCmd[0])
+		os.Exit(1)
+	}
+
+	if err := syscall.Exec(binary, execCmd, os.Environ()); err != nil {
+		fmt.Fprintf(os.Stderr, "error executing command: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 // formatSize converts bytes to human-readable format (e.g., "3.2 MB").
