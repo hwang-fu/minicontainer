@@ -285,6 +285,41 @@ func RunExec(args []string) {
 	}
 }
 
+// RunInspect displays detailed container information as JSON.
+func RunInspect(idOrName string) {
+	cs, err := state.FindContainer(idOrName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Build inspection output structure
+	inspection := map[string]any{
+		"Id":      cs.ID,
+		"Name":    cs.Name,
+		"Status":  cs.Status,
+		"Created": cs.CreatedAt,
+		"State": map[string]any{
+			"Running":  cs.Status == state.StatusRunning,
+			"Pid":      cs.PID,
+			"ExitCode": cs.ExitCode,
+		},
+		"Config": map[string]any{
+			"Cmd":    cs.Command,
+			"Rootfs": cs.RootfsPath,
+		},
+	}
+
+	// Pretty-print JSON
+	output, err := json.MarshalIndent(inspection, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println(string(output))
+}
+
 // formatSize converts bytes to human-readable format (e.g., "3.2 MB").
 func formatSize(bytes int64) string {
 	const (
