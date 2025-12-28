@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -233,6 +234,55 @@ func RunLogs(idOrName string) {
 	}
 
 	os.Stdout.Write(data)
+}
+
+// RunExec executes a command inside a running container's namespaces.
+// Uses nsenter to enter the container's existing namespaces.
+func RunExec(args []string) {
+	if len(args) < 2 {
+		fmt.Fprintln(os.Stderr, "usage: minicontainer exec <container> <command> [args...]")
+		os.Exit(1)
+	}
+
+	containerID := args[0]
+	execCmd := args[1:]
+
+	// Find the running container
+	cs, err := state.FindContainer(containerID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if cs.Status != state.StatusRunning {
+		fmt.Fprintf(os.Stderr, "error: container %s is not running\n", cs.Name)
+		os.Exit(1)
+	}
+
+	// Use nsenter to enter all namespaces of the container
+	// -t PID: target process
+	// -m: mount namespace
+	// -u: UTS namespace
+	// -i: IPC namespace
+	// -n: network namespace
+	// -p: PID namespace
+	pid := fmt.Sprintf("%d", cs.PID)
+	nsenterArgs := []string{
+		"-t", pid,
+		"-m", "-u", "-i", "-n", "-p",
+		"--",
+	}
+	nsenterArgs = append(nsenterArgs, execCmd...)
+
+	cmd := exec.Command("nsenter", nsenterArgs...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 // formatSize converts bytes to human-readable format (e.g., "3.2 MB").

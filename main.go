@@ -47,6 +47,13 @@ func main() {
 			container.RunWithoutTTY(*resolvedCfg, cmdArgs)
 		}
 
+	case "exec":
+		if len(os.Args) < 4 {
+			fmt.Fprintln(os.Stderr, "usage: minicontainer exec [options] <container> <command> [args...]")
+			os.Exit(1)
+		}
+		cmd.RunExec(os.Args[2:])
+
 	case "stop":
 		if len(os.Args) < 3 {
 			fmt.Fprintln(os.Stderr, "usage: minicontainer stop <container>")
@@ -120,6 +127,7 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Container Commands:")
 	fmt.Println("  run      Create and run a container")
+	fmt.Println("  exec     Execute a command in a running container")
 	fmt.Println("  stop     Stop a running container")
 	fmt.Println("  rm       Remove a stopped container")
 	fmt.Println("  ps       List containers")
