@@ -1,8 +1,11 @@
 package container
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 	"sync"
+	"time"
 )
 
 // TimestampedLogWriter wraps an io.Writer and prefixes each line
@@ -12,6 +15,13 @@ type TimestampedLogWriter struct {
 	writer io.Writer // Underlying writer (log file)
 	stream string    // Stream label: "stdout" or "stderr"
 	mu     sync.Mutex
+}
+
+func NewTimestampedLogWriter(w io.Writer, stream string) *TimestampedLogWriter {
+	return &TimestampedLogWriter{
+		writer: w,
+		stream: stream,
+	}
 }
 
 // Write implements io.Writer. Prefixes each line with timestamp and stream label.
